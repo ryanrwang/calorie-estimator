@@ -1,0 +1,11 @@
+# PHP overrides for image uploads
+php_value upload_max_filesize 4M
+php_value post_max_size 5M
+php_value max_execution_time 60
+
+# Deny direct access to includes and data directories
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^includes/ - [F,L]
+    RewriteRule ^data/ - [F,L]
+</IfModule>
