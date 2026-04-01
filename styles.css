@@ -1600,21 +1600,108 @@ a:hover {
     }
 }
 
-/* ── Mock mode indicator ── */
+/* ── Mock mode subtitle ── */
 
-.mock-indicator {
-    position: fixed;
-    bottom: var(--spacing-sm);
-    right: var(--spacing-sm);
-    background: var(--color-status-warningBg);
-    color: var(--color-status-warningText);
-    font-size: var(--typography-xs-fontSize);
+.mock-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+.brand-subtitle.mock-subtitle {
+    color: crimson;
     font-weight: var(--typography-xl-fontWeight);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    z-index: 9999;
-    pointer-events: none;
+    margin-top: 0;
+}
+
+.mock-exit-btn {
+    background: none;
+    border: none;
+    color: crimson;
+    cursor: pointer;
+    padding: 0;
     opacity: var(--opacity-muted);
-    letter-spacing: 0.05em;
-    line-height: var(--typography-xs-lineHeight);
+    transition: opacity var(--transition-fast);
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.mock-exit-btn:hover {
+    opacity: 1;
+}
+
+.mock-exit-btn .material-symbols-outlined {
+    font-size: var(--typography-base-fontSize);
+}
+
+/* ── Mock exit dialog ── */
+
+.mock-exit-dialog {
+    border: none;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    padding: 0;
+    max-width: 300px;
+    width: calc(100% - var(--spacing-lg));
+    box-shadow: var(--shadow-xl);
+    margin: auto;
+}
+
+.mock-exit-dialog::backdrop {
+    background-color: var(--color-bg-overlay);
+}
+
+.mock-exit-dialog-content {
+    padding: var(--spacing-lg);
+}
+
+.mock-exit-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-lg);
+}
+
+.mock-exit-dialog-title {
+    font-size: var(--typography-lg-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    margin: 0;
+}
+
+.mock-exit-dialog-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.mock-exit-action-btn {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: var(--typography-base-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.mock-exit-yes {
+    background-color: crimson;
+    color: white;
+}
+
+.mock-exit-yes:hover {
+    background-color: #b01030;
+}
+
+.mock-exit-no {
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+}
+
+.mock-exit-no:hover {
+    background-color: var(--color-interactive-hover);
 }

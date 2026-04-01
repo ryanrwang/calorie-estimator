@@ -56,7 +56,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         <!-- Brand hero -->
         <div class="page-hero">
             <h1 class="brand-title">Carole</h1>
+            <?php if ($mockMode): ?>
+            <div class="mock-controls">
+                <p class="brand-subtitle mock-subtitle">MOCK MODE</p>
+                <button type="button" id="mock-exit-btn" class="mock-exit-btn" title="Exit mock mode">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <?php else: ?>
             <p class="brand-subtitle">The calorie estimator</p>
+            <?php endif; ?>
         </div>
 
         <!-- Estimation form -->
@@ -244,8 +253,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     </dialog>
     <?php endif; ?>
 
+
     <?php if ($mockMode): ?>
-    <div class="mock-indicator">MOCK MODE</div>
+    <dialog id="mock-exit-dialog" class="mock-exit-dialog">
+        <div class="mock-exit-dialog-content">
+            <div class="mock-exit-dialog-header">
+                <h2 class="mock-exit-dialog-title">Save mock data?</h2>
+                <button type="button" id="mock-exit-dialog-close" class="login-dialog-close" aria-label="Cancel">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="mock-exit-dialog-actions">
+                <button type="button" id="mock-exit-yes" class="mock-exit-action-btn mock-exit-yes">Yes</button>
+                <button type="button" id="mock-exit-no" class="mock-exit-action-btn mock-exit-no">No</button>
+            </div>
+        </div>
+    </dialog>
     <?php endif; ?>
 
     <script>window.APP_AUTH = <?php echo json_encode($loggedIn); ?>;</script>

@@ -704,6 +704,8 @@
     }
 
     function saveToHistory(entry) {
+        if (window.APP_MOCK) entry.mock = true;
+
         var history = getHistory();
         history.unshift(entry);
 
@@ -1080,6 +1082,43 @@
         historyOverflowBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             historyOverflowMenu.classList.toggle('hidden');
+        });
+    }
+
+    // Mock exit button + dialog
+    var mockExitBtn = document.getElementById('mock-exit-btn');
+    var mockExitDialog = document.getElementById('mock-exit-dialog');
+    if (mockExitBtn && mockExitDialog) {
+        function exitMock(keepData) {
+            if (!keepData) {
+                var cleaned = getHistory().filter(function (e) { return !e.mock; });
+                try { localStorage.setItem(HISTORY_KEY, JSON.stringify(cleaned)); } catch (e) { /* noop */ }
+            }
+            window.location.href = 'index.php?mock=0';
+        }
+
+        mockExitBtn.addEventListener('click', function () {
+            var hasMock = getHistory().some(function (e) { return e.mock; });
+            if (!hasMock) { window.location.href = 'index.php?mock=0'; return; }
+            mockExitDialog.showModal();
+        });
+
+        document.getElementById('mock-exit-dialog-close').addEventListener('click', function () {
+            mockExitDialog.close();
+        });
+
+        document.getElementById('mock-exit-yes').addEventListener('click', function () {
+            mockExitDialog.close();
+            exitMock(true);
+        });
+
+        document.getElementById('mock-exit-no').addEventListener('click', function () {
+            mockExitDialog.close();
+            exitMock(false);
+        });
+
+        mockExitDialog.addEventListener('click', function (e) {
+            if (e.target === mockExitDialog) mockExitDialog.close();
         });
     }
 
