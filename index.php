@@ -154,6 +154,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 <p class="loading-text">Estimating calories...</p>
             </div>
             <div id="results-content" class="results-content"></div>
+            <div id="results-beard" class="results-beard hidden">
+                <span id="results-beard-date" class="history-date"></span>
+                <div class="history-beard-actions">
+                    <button type="button" class="history-beard-btn" id="results-show-prompt-btn" aria-label="Show prompt">
+                        <span class="material-symbols-outlined">description</span>
+                    </button>
+                    <button type="button" class="history-beard-btn" id="results-archive-btn" aria-label="Archive">
+                        <span class="material-symbols-outlined">archive</span>
+                    </button>
+                </div>
+            </div>
         </section>
 
         <!-- Local history -->
@@ -161,9 +172,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             <div class="history-toggle" id="history-toggle">
                 <span class="history-title">History</span>
                 <span class="history-toggle-actions">
-                    <button type="button" id="clear-history" class="clear-history-btn hidden">
-                        <span class="material-symbols-outlined">delete_sweep</span> Clear
-                    </button>
+                    <div class="history-overflow" id="history-overflow">
+                        <button type="button" class="history-overflow-btn" id="history-overflow-btn" aria-label="History options">
+                            <span class="material-symbols-outlined">more_horiz</span>
+                        </button>
+                        <div class="history-overflow-menu hidden" id="history-overflow-menu">
+                            <button type="button" class="history-overflow-item" id="clear-history">
+                                <span class="material-symbols-outlined">delete_sweep</span> Clear all
+                            </button>
+                        </div>
+                    </div>
                     <span class="material-symbols-outlined history-chevron">expand_more</span>
                 </span>
             </div>

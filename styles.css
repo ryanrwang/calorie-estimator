@@ -590,13 +590,24 @@ a:hover {
 .calorie-hero {
     display: flex;
     align-items: baseline;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md) 0;
+    justify-content: space-between;
+    padding: 0 0 var(--spacing-md);
     margin-bottom: var(--spacing-sm);
     border-bottom: 1px solid var(--color-border-default);
     opacity: 0;
     animation: fadeSlideIn 0.4s ease forwards;
+}
+
+.calorie-hero-label {
+    font-size: var(--typography-lg-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-text-secondary);
+}
+
+.calorie-hero-range {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-xs);
 }
 
 .calorie-hero-number {
@@ -606,15 +617,8 @@ a:hover {
     color: var(--color-action-primary);
 }
 
-.calorie-hero-separator {
-    font-size: var(--typography-lg-fontSize);
-    color: var(--color-text-tertiary);
-}
-
-.calorie-hero-unit {
-    font-size: var(--typography-sm-fontSize);
-    color: var(--color-text-tertiary);
-    margin-left: var(--spacing-xs);
+.calorie-hero-tilde {
+    opacity: 0.5;
 }
 
 /* ── Results table ── */
@@ -626,6 +630,25 @@ a:hover {
 .results.results-loading .results-content {
     opacity: 1;
     animation: none;
+}
+
+/* ── Results prompt (shown via beard button) ── */
+.results-prompt {
+    margin-top: var(--spacing-sm);
+}
+
+/* ── Results beard footer ── */
+.results-beard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--color-bg-page);
+    border-top: 1px solid var(--color-border-default);
+    margin: var(--spacing-md) calc(-1 * var(--spacing-md)) calc(-1 * var(--spacing-md));
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    opacity: 0;
+    animation: fadeSlideIn 0.4s ease 0.2s forwards;
 }
 
 .result-item {
@@ -750,29 +773,77 @@ a:hover {
     max-height: 5000px;
 }
 
-.clear-history-btn {
+/* ── History overflow menu (title bar) ── */
+.history-overflow {
+    position: relative;
+}
+
+.history-overflow-btn {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: var(--typography-xs-fontSize);
-    font-family: inherit;
-    color: var(--color-text-tertiary);
-    background: none;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: background-color var(--transition-fast),
                 color var(--transition-fast);
 }
 
-.clear-history-btn:hover {
+.history-overflow-btn:hover {
     background-color: var(--color-interactive-hover);
     color: var(--color-text-secondary);
 }
 
-.clear-history-btn .material-symbols-outlined {
-    font-size: 16px;
+.history-overflow-menu {
+    position: absolute;
+    top: calc(100% + var(--spacing-xs));
+    right: 0;
+    min-width: 160px;
+    padding: var(--spacing-xs);
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 50;
+}
+
+.history-overflow-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    padding: var(--spacing-sm);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--transition-fast);
+}
+
+.history-overflow-item:hover {
+    background-color: var(--color-interactive-hover);
+    color: var(--color-text-primary);
+}
+
+.history-overflow-item .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.history-overflow-item-danger {
+    color: var(--color-action-danger);
+}
+
+.history-overflow-item-danger:hover {
+    color: var(--color-action-danger);
 }
 
 .history-list {
@@ -782,6 +853,121 @@ a:hover {
     padding-top: var(--spacing-sm);
 }
 
+/* ── History stack ── */
+.history-stack {
+    position: relative;
+    cursor: pointer;
+}
+
+.history-stack-cards {
+    position: relative;
+}
+
+.history-stack-item {
+    --sx: calc(1 - var(--layer) * 0.03);
+    transform-origin: top center;
+    transform: scaleX(var(--sx));
+    z-index: calc(10 - var(--layer));
+    position: relative;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    will-change: transform;
+}
+
+/* Top card is interactive — only the direct first child of stack-cards */
+.history-stack-cards > .history-stack-item:first-child {
+    pointer-events: auto;
+    transform: none;
+}
+
+/* ── Stacked rest area ── */
+.history-stack-rest {
+    cursor: pointer;
+    position: relative;
+}
+
+/* Stacked cards: greyed-out text + progressively darker background */
+.history-stack-rest .history-entry {
+    color: var(--color-text-tertiary);
+    opacity: calc(1 - var(--layer) * 0.1);
+}
+
+.history-stack-rest .history-entry-food-name {
+    color: var(--color-text-tertiary);
+}
+
+
+/* Cards behind overlap upward — each shows less than the previous */
+.history-stack-rest .history-stack-item {
+    margin-top: calc(-18px - (var(--layer) - 1) * 6px);
+}
+
+/* Hover: breathing peek animation — only on the stacked rest area */
+/* Use translateY for GPU-accelerated animation (no layout thrashing) */
+.history-stack-rest:hover .history-stack-item {
+    animation: stackBreathe 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    animation-delay: calc(var(--layer) * 0.15s);
+}
+
+@keyframes stackBreathe {
+    0%, 100% {
+        transform: scaleX(var(--sx)) translateY(0);
+    }
+    50% {
+        transform: scaleX(var(--sx)) translateY(8px);
+    }
+}
+
+/* ── Ghost cards (empty placeholders hinting at more) ── */
+.history-stack-ghost {
+    --ghost-sx: calc(0.91 - var(--ghost) * 0.03);
+    height: 40px;
+    margin-top: calc(-34px - var(--ghost) * 4px);
+    background-color: var(--color-bg-surface);
+    opacity: calc(0.7 - var(--ghost) * 0.1);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    transform-origin: top center;
+    transform: scaleX(var(--ghost-sx));
+    position: relative;
+    z-index: calc(2 - var(--ghost));
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+}
+
+.history-stack-rest:hover .history-stack-ghost {
+    animation: ghostBreathe 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    animation-delay: calc((var(--ghost) + 2) * 0.15s);
+}
+
+@keyframes ghostBreathe {
+    0%, 100% {
+        transform: scaleX(var(--ghost-sx)) translateY(0);
+    }
+    50% {
+        transform: scaleX(var(--ghost-sx)) translateY(6px);
+    }
+}
+
+.history-stack-label {
+    display: block;
+    width: 100%;
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+    font-size: var(--typography-xs-fontSize);
+    font-family: inherit;
+    color: var(--color-text-tertiary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    transition: color var(--transition-fast);
+}
+
+.history-stack-label:hover {
+    color: var(--color-text-link);
+}
+
 .history-empty {
     color: var(--color-text-tertiary);
     font-size: var(--typography-sm-fontSize);
@@ -789,17 +975,211 @@ a:hover {
 }
 
 .history-entry {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--color-bg-surface);
     border: 1px solid var(--color-border-default);
     border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: box-shadow var(--transition-fast),
+                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.history-entry-header {
+.history-entry:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+/* ── Header row — crossfade collapsed ↔ expanded ── */
+.history-entry-header-row {
+    position: relative;
+    min-height: 32px;
     display: flex;
+    align-items: center;
+}
+
+.history-header-collapsed,
+.history-header-expanded {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.history-header-collapsed {
     gap: var(--spacing-sm);
-    align-items: flex-start;
-    margin-bottom: var(--spacing-sm);
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.history-header-expanded {
+    position: absolute;
+    inset: 0;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(4px);
+    pointer-events: none;
+}
+
+.history-entry.expanded .history-header-collapsed {
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+}
+
+.history-entry.expanded .history-header-expanded {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.history-entry-food-name {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.history-entry-calories {
+    flex-shrink: 0;
+    font-size: var(--typography-sm-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-action-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Detail content — animated ── */
+.history-entry-detail {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.15s ease;
+    overflow: hidden;
+}
+
+.history-entry-detail > .history-entry-detail-inner {
+    overflow: hidden;
+    padding-top: 0;
+    transition: padding-top 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.history-entry.expanded .history-entry-detail {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.history-entry.expanded .history-entry-detail > .history-entry-detail-inner {
+    padding-top: var(--spacing-sm);
+}
+
+.history-entry.expanded {
+    padding: var(--spacing-md);
+    transition: padding 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Beard toolbar ── */
+.history-entry-beard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    background-color: var(--color-bg-page);
+    border-top: 1px solid transparent;
+    margin: 0 calc(-1 * var(--spacing-md));
+    margin-bottom: 0;
+    border-top-width: 0;
+    padding: 0 var(--spacing-md);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    transition: max-height 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.15s ease,
+                margin-top 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                margin-bottom 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border-top-width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.history-entry.expanded .history-entry-beard {
+    max-height: 60px;
+    opacity: 1;
+    margin-top: var(--spacing-md);
+    margin-bottom: calc(-1 * var(--spacing-md));
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-top-width: 1px;
+    border-top-color: var(--color-border-default);
+}
+
+/* Slightly smaller buttons so they breathe within the beard */
+.history-entry-beard .history-beard-btn {
+    width: 28px;
+    height: 28px;
+}
+
+.history-entry-beard .history-beard-btn .material-symbols-outlined {
+    font-size: 16px;
+}
+
+
+.history-beard-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.history-beard-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.history-beard-btn:hover {
+    background-color: var(--color-interactive-hover);
+    color: var(--color-text-secondary);
+}
+
+.history-beard-btn.active {
+    color: var(--color-action-primary);
+}
+
+.history-beard-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* ── Staggered line animation ── */
+.history-entry.expanded .history-entry-detail .result-item,
+.history-entry.expanded .history-entry-detail .history-prompt,
+.history-entry.expanded .history-entry-detail .result-meta {
+    animation: staggerFadeIn 0.15s ease both;
+}
+
+.history-entry.expanded .history-response .result-item:nth-child(1) { animation-delay: 30ms; }
+.history-entry.expanded .history-response .result-item:nth-child(2) { animation-delay: 60ms; }
+.history-entry.expanded .history-response .result-item:nth-child(3) { animation-delay: 90ms; }
+.history-entry.expanded .history-response .result-item:nth-child(4) { animation-delay: 120ms; }
+.history-entry.expanded .history-response .result-item:nth-child(5) { animation-delay: 150ms; }
+.history-entry.expanded .history-response .result-meta { animation-delay: 150ms; }
+
+@keyframes staggerFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(3px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .history-thumb {
@@ -828,6 +1208,40 @@ a:hover {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.history-prompt {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-secondary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-bg-page);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-sm);
+    font-style: italic;
+}
+
+/* ── History card hero tokens ── */
+.history-hero-label {
+    font-size: var(--typography-sm-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-text-secondary);
+}
+
+.history-hero-range {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+}
+
+.history-hero-number {
+    font-size: var(--typography-xl-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    line-height: 1;
+    color: var(--color-action-primary);
+}
+
+.history-hero-tilde {
+    opacity: 0.5;
 }
 
 .history-response {
