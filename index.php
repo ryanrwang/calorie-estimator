@@ -90,15 +90,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             </div>
             <?php endif; ?>
 
-            <button type="submit" id="submit-btn" class="submit-btn">
-                <span id="submit-text">Estimate Calories</span>
-                <span id="submit-spinner" class="spinner hidden" aria-hidden="true"></span>
-            </button>
+            <div class="form-footer">
+                <button type="submit" id="submit-btn" class="submit-btn">
+                    <span id="submit-text">Estimate Calories</span>
+                    <span id="submit-spinner" class="spinner hidden" aria-hidden="true"></span>
+                </button>
+                <div id="usage-indicator" class="usage-indicator hidden"></div>
+            </div>
         </form>
 
         <!-- Results area -->
         <section id="results" class="results hidden" aria-live="polite">
             <div id="results-content" class="results-content"></div>
+            <button type="button" id="copy-btn" class="copy-btn hidden">
+                <span id="copy-text">Copy for LoseIt</span>
+            </button>
         </section>
 
         <!-- Local history -->
