@@ -91,13 +91,24 @@
         }
     }
 
+    // ── Settings dropdown ──
+
+    var settingsBtn = document.getElementById('settings-btn');
+    var settingsMenu = document.getElementById('settings-menu');
+
+    if (settingsBtn && settingsMenu) {
+        settingsBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            settingsMenu.classList.toggle('hidden');
+            if (profileMenu) profileMenu.classList.add('hidden');
+        });
+    }
+
     // Close dropdowns on outside click
     document.addEventListener('click', function () {
         if (profileMenu) profileMenu.classList.add('hidden');
         if (modelDropdown) modelDropdown.classList.add('hidden');
-        // Close history overflow menu
-        var hom = document.getElementById('history-overflow-menu');
-        if (hom) hom.classList.add('hidden');
+        if (settingsMenu) settingsMenu.classList.add('hidden');
     });
 
     // ── Image compression ──
@@ -289,10 +300,28 @@
     }
 
     // Auto-resize textarea with smooth transition
+    var typingTimer = null;
     if (foodInput) {
         foodInput.addEventListener('input', function () {
             this.style.height = 'auto';
             this.style.height = Math.max(80, this.scrollHeight) + 'px';
+
+            // Typing glow pulse
+            if (inputCard && !inputCard.classList.contains('compact')) {
+                inputCard.classList.remove('typing-fade');
+                // Re-trigger animation by removing and re-adding class
+                inputCard.classList.remove('typing');
+                void inputCard.offsetWidth; // force reflow to restart animation
+                inputCard.classList.add('typing');
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(function () {
+                    inputCard.classList.remove('typing');
+                    inputCard.classList.add('typing-fade');
+                    setTimeout(function () {
+                        inputCard.classList.remove('typing-fade');
+                    }, 500);
+                }, 600);
+            }
         });
     }
 
@@ -301,8 +330,8 @@
 
     var compactActions = document.getElementById('compact-actions');
 
-    var ANIM_DURATION = 250;
-    var ANIM_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+    var ANIM_DURATION = 400;
+    var ANIM_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
     function animateCardHeight(fromHeight, toHeight) {
         inputCard.classList.add('animating');
@@ -344,21 +373,74 @@
         animateCardHeight(startHeight, endHeight);
     }
 
-    function submitEstimate(payload) {
-        lastPayload = payload;
+    // Stagger-shift history entries down with visible delays
+    function staggerHistoryDown(startIndex) {
+        var historyList = document.getElementById('history-list');
+        if (!historyList) return;
+        var entries = historyList.querySelectorAll('.history-entry');
+        var max = Math.min(entries.length, 8);
+        for (var i = startIndex || 0; i < max; i++) {
+            (function (entry, delay) {
+                entry.style.animationDelay = delay + 'ms';
+                entry.classList.add('stagger-shift');
+                entry.addEventListener('animationend', function handler() {
+                    entry.classList.remove('stagger-shift');
+                    entry.style.animationDelay = '';
+                    entry.removeEventListener('animationend', handler);
+                });
+            })(entries[i], i * 60);
+        }
+    }
 
-        // Compact input, show loading inside results container
+    function beginLoading(afterCollapse) {
         clearResultsAnimation();
-        compactInput();
+        if (!afterCollapse) compactInput();
         resultsContent.innerHTML = '';
         if (calorieHero) calorieHero.classList.add('hidden');
         if (resultsBeard) resultsBeard.classList.add('hidden');
-        // Remove any prompt display from previous result
         var oldPrompt = resultsSection.querySelector('.results-prompt');
         if (oldPrompt) oldPrompt.remove();
         if (loadingState) loadingState.classList.remove('hidden');
         resultsSection.classList.add('results-loading');
         resultsSection.classList.remove('hidden');
+
+        // Animate loading card fading in and growing from small
+        resultsSection.style.transformOrigin = 'top center';
+        var loadingHeight = resultsSection.offsetHeight;
+
+        resultsSection.animate([
+            { opacity: 0, transform: 'scale(0.96) translateY(-8px)' },
+            { opacity: 1, transform: 'scale(1) translateY(0)' }
+        ], {
+            duration: 400,
+            easing: ANIM_EASING,
+        }).onfinish = function () {
+            resultsSection.style.transformOrigin = '';
+        };
+    }
+
+    function submitEstimate(payload) {
+        lastPayload = payload;
+
+        if (resultsShowing && !resultsSection.classList.contains('hidden')) {
+            // Results currently showing — collapse them into history, then load
+            resultsShowing = false;
+            compactInput();
+
+            animateResultsIntoHistory(function () {
+                renderHistory();
+                // Pop-in newest history card + stagger the rest
+                popInNewestHistoryCard();
+                expandHistory();
+                // Then grow in the loading card
+                beginLoading(true);
+            });
+        } else {
+            // First submit — stagger existing history down, then show loading
+            compactInput();
+            staggerHistoryDown(0);
+            beginLoading(false);
+        }
 
         submitBtn.disabled = true;
         submitText.textContent = 'Estimating...';
@@ -531,13 +613,90 @@
     function showResults(html, isError) {
         clearResultsAnimation();
         resultsSection.classList.remove('results-loading');
+
+        // Hide all content initially for line-by-line reveal
         resultsContent.innerHTML = html;
         resultsSection.classList.remove('hidden');
         if (isError) {
             if (calorieHero) calorieHero.classList.add('hidden');
         }
-        // Enable compact input clicking after results are rendered
-        setTimeout(function () { isCompactClickable = true; }, 100);
+
+        // Measure current (loading) height vs final (results) height
+        var currentHeight = resultsSection.offsetHeight;
+
+        // Hide content items for stagger reveal
+        var allItems = resultsContent.querySelectorAll('.result-item, .result-meta, .result-line, .error-text');
+        for (var i = 0; i < allItems.length; i++) {
+            allItems[i].style.opacity = '0';
+            allItems[i].style.transform = 'translateY(6px)';
+        }
+        if (calorieHero && !calorieHero.classList.contains('hidden')) {
+            calorieHero.style.opacity = '0';
+            calorieHero.style.transform = 'translateY(6px)';
+        }
+        if (resultsBeard && !resultsBeard.classList.contains('hidden')) {
+            resultsBeard.style.opacity = '0';
+        }
+
+        var naturalHeight = resultsSection.offsetHeight;
+
+        // Phase 1: Grow card from current height to natural height
+        resultsSection.style.overflow = 'hidden';
+        resultsSection.style.transformOrigin = 'top center';
+
+        var growAnim = resultsSection.animate([
+            { height: currentHeight + 'px' },
+            { height: naturalHeight + 'px' }
+        ], {
+            duration: 500,
+            easing: ANIM_EASING,
+        });
+
+        growAnim.onfinish = function () {
+            resultsSection.style.overflow = '';
+            resultsSection.style.transformOrigin = '';
+
+            // Phase 2: Stagger-reveal content line by line
+            // Calorie hero first
+            if (calorieHero && !calorieHero.classList.contains('hidden')) {
+                calorieHero.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                calorieHero.style.opacity = '1';
+                calorieHero.style.transform = 'translateY(0)';
+            }
+
+            // Then each result line staggered
+            for (var j = 0; j < allItems.length; j++) {
+                (function (item, delay) {
+                    setTimeout(function () {
+                        item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateY(0)';
+                    }, delay);
+                })(allItems[j], 150 + j * 80);
+            }
+
+            // Beard last
+            if (resultsBeard && !resultsBeard.classList.contains('hidden')) {
+                setTimeout(function () {
+                    resultsBeard.style.transition = 'opacity 0.3s ease';
+                    resultsBeard.style.opacity = '1';
+                }, 150 + allItems.length * 80);
+            }
+
+            // Enable compact clicking after all animations
+            setTimeout(function () {
+                isCompactClickable = true;
+                // Clean up inline styles
+                if (calorieHero) { calorieHero.style.transition = ''; calorieHero.style.transform = ''; }
+                for (var k = 0; k < allItems.length; k++) {
+                    allItems[k].style.transition = '';
+                    allItems[k].style.transform = '';
+                    allItems[k].style.opacity = '';
+                }
+                if (resultsBeard) { resultsBeard.style.transition = ''; resultsBeard.style.opacity = ''; }
+            }, 300 + allItems.length * 80);
+        };
+
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -548,20 +707,24 @@
     if (inputCard) {
         inputCard.addEventListener('click', function (e) {
             if (!isCompactClickable) return;
-            // Don't trigger on toolbar button clicks
             if (e.target.closest('.toolbar-btn') || e.target.closest('.submit-pill') ||
                 e.target.closest('.model-select')) return;
 
-            // Animate results collapsing before hiding
+            isCompactClickable = false;
+
+            // Step 1: Expand input first
+            resultsShowing = false;
+            expandInput();
+            lastResultText = '';
+
+            // Step 2: Collapse results in place (shrink to history card size)
             animateResultsIntoHistory(function () {
-                resultsShowing = false;
-                expandInput();
+                // Step 3: Render history with the new card, stagger everything
                 renderHistory();
                 if (loadingState) loadingState.classList.add('hidden');
+                popInNewestHistoryCard();
+                expandHistory();
 
-                lastResultText = '';
-
-                // Focus textarea and place cursor at end
                 if (foodInput) {
                     setTimeout(function () {
                         foodInput.focus();
@@ -569,9 +732,6 @@
                         foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
                     }, 100);
                 }
-
-                // Re-expand history
-                expandHistory();
             });
         });
     }
@@ -585,21 +745,37 @@
         }
 
         var startHeight = resultsSection.offsetHeight;
+        var targetHeight = 48; // approximate history card height
         resultsSection.style.overflow = 'hidden';
+        resultsSection.style.transformOrigin = 'top center';
 
+        // Phase 1: Shrink content to history-card height
         resultsCollapseAnim = resultsSection.animate([
-            { opacity: 1, maxHeight: startHeight + 'px', transform: 'translateY(0) scale(1)' },
-            { opacity: 0, maxHeight: '0px', transform: 'translateY(-8px) scale(0.98)' }
+            { height: startHeight + 'px', opacity: 1 },
+            { height: targetHeight + 'px', opacity: 0.6 }
         ], {
-            duration: 250,
-            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            duration: 400,
+            easing: ANIM_EASING,
         });
 
         resultsCollapseAnim.onfinish = function () {
-            resultsSection.style.overflow = '';
-            resultsSection.classList.add('hidden');
-            resultsCollapseAnim = null;
-            callback();
+            // Phase 2: Collapse to zero
+            resultsCollapseAnim = resultsSection.animate([
+                { height: targetHeight + 'px', opacity: 0.6 },
+                { height: '0px', opacity: 0 }
+            ], {
+                duration: 250,
+                easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            });
+
+            resultsCollapseAnim.onfinish = function () {
+                resultsSection.style.overflow = '';
+                resultsSection.style.transformOrigin = '';
+                resultsSection.style.height = '';
+                resultsSection.classList.add('hidden');
+                resultsCollapseAnim = null;
+                callback();
+            };
         };
     }
 
@@ -608,6 +784,30 @@
             resultsCollapseAnim.cancel();
             resultsCollapseAnim = null;
         }
+        if (resultsSection) {
+            resultsSection.style.overflow = '';
+            resultsSection.style.transformOrigin = '';
+            resultsSection.style.height = '';
+        }
+    }
+
+    function popInNewestHistoryCard() {
+        var historyList = document.getElementById('history-list');
+        if (!historyList) return;
+
+        var entries = historyList.querySelectorAll('.history-entry');
+        if (entries.length === 0) return;
+
+        // Pop-in the newest card (first entry)
+        var firstEntry = entries[0];
+        firstEntry.classList.add('new-entry');
+        firstEntry.addEventListener('animationend', function handler() {
+            firstEntry.classList.remove('new-entry');
+            firstEntry.removeEventListener('animationend', handler);
+        });
+
+        // Stagger-shift the rest of the cards down
+        staggerHistoryDown(1);
     }
 
     function formatResponse(text) {
@@ -655,42 +855,15 @@
         return div.innerHTML;
     }
 
-    // ── History toggle ──
+    // ── History section ──
 
-    var historyToggle = document.getElementById('history-toggle');
-    var historyCollapsible = document.getElementById('history-collapsible');
     var historySection = document.getElementById('history');
 
-    function collapseHistory() {
-        if (historyCollapsible) historyCollapsible.classList.remove('expanded');
-        if (historySection) historySection.classList.remove('expanded');
-    }
-
     function expandHistory() {
-        if (historyCollapsible) historyCollapsible.classList.add('expanded');
-        if (historySection) {
-            historySection.classList.add('expanded');
-            // Re-show history if it was hidden during results display
-            if (getHistory().length > 0) historySection.classList.remove('hidden');
+        if (historySection && getHistory().length > 0) {
+            historySection.classList.remove('hidden');
         }
     }
-
-    function toggleHistory() {
-        if (historyCollapsible) historyCollapsible.classList.toggle('expanded');
-        if (historySection) historySection.classList.toggle('expanded');
-    }
-
-    if (historyToggle) {
-        historyToggle.addEventListener('click', function (e) {
-            // Don't toggle if clicking the overflow menu area
-            if (e.target.closest('#clear-history')) return;
-            if (e.target.closest('.history-overflow')) return;
-            toggleHistory();
-        });
-    }
-
-    // Start history expanded
-    if (historySection) historySection.classList.add('expanded');
 
     // ── localStorage history ──
 
@@ -1074,17 +1247,6 @@
         }
     }
 
-    // History title overflow menu
-    var historyOverflowBtn = document.getElementById('history-overflow-btn');
-    var historyOverflowMenu = document.getElementById('history-overflow-menu');
-
-    if (historyOverflowBtn && historyOverflowMenu) {
-        historyOverflowBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            historyOverflowMenu.classList.toggle('hidden');
-        });
-    }
-
     // Mock exit button + dialog
     var mockExitBtn = document.getElementById('mock-exit-btn');
     var mockExitDialog = document.getElementById('mock-exit-dialog');
@@ -1122,11 +1284,11 @@
         });
     }
 
-    var clearHistoryBtn = document.getElementById('clear-history');
+    var clearHistoryBtn = document.getElementById('settings-clear-history');
     if (clearHistoryBtn) {
         clearHistoryBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            if (historyOverflowMenu) historyOverflowMenu.classList.add('hidden');
+            if (settingsMenu) settingsMenu.classList.add('hidden');
             if (confirm('Clear all history?')) {
                 try { localStorage.removeItem(HISTORY_KEY); } catch (e) { /* noop */ }
                 renderHistory();

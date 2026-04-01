@@ -30,6 +30,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         <button id="theme-toggle" class="fab-btn" type="button" aria-label="Toggle dark mode">
             <span class="material-symbols-outlined theme-icon">light_mode</span>
         </button>
+        <div class="settings-dropdown" id="settings-dropdown">
+            <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
+            <div class="settings-menu hidden" id="settings-menu">
+                <button type="button" class="settings-menu-item settings-menu-danger" id="settings-clear-history">
+                    <span class="material-symbols-outlined">delete_sweep</span> Clear history
+                </button>
+            </div>
+        </div>
         <?php if ($loggedIn): ?>
         <div class="profile-dropdown" id="profile-dropdown">
             <button class="fab-btn" type="button" id="profile-btn" aria-label="Profile menu">
@@ -178,25 +188,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
         <!-- Local history -->
         <section id="history" class="history-section hidden">
-            <div class="history-toggle" id="history-toggle">
-                <span class="history-title">History</span>
-                <span class="history-toggle-actions">
-                    <div class="history-overflow" id="history-overflow">
-                        <button type="button" class="history-overflow-btn" id="history-overflow-btn" aria-label="History options">
-                            <span class="material-symbols-outlined">more_horiz</span>
-                        </button>
-                        <div class="history-overflow-menu hidden" id="history-overflow-menu">
-                            <button type="button" class="history-overflow-item" id="clear-history">
-                                <span class="material-symbols-outlined">delete_sweep</span> Clear all
-                            </button>
-                        </div>
-                    </div>
-                    <span class="material-symbols-outlined history-chevron">expand_more</span>
-                </span>
-            </div>
-            <div class="history-collapsible expanded" id="history-collapsible">
-                <div id="history-list" class="history-list"></div>
-            </div>
+            <div id="history-list" class="history-list"></div>
         </section>
     </main>
 
