@@ -69,6 +69,24 @@
         reader.readAsDataURL(file);
     }
 
+    // ── Model toggle ──
+
+    var selectedModel = 'flash';
+    var modelToggle = document.getElementById('model-toggle');
+
+    if (modelToggle) {
+        var pills = modelToggle.querySelectorAll('.model-pill');
+        for (var i = 0; i < pills.length; i++) {
+            pills[i].addEventListener('click', function () {
+                for (var j = 0; j < pills.length; j++) {
+                    pills[j].classList.remove('active');
+                }
+                this.classList.add('active');
+                selectedModel = this.getAttribute('data-model');
+            });
+        }
+    }
+
     // ── Form handling ──
 
     var form = document.getElementById('estimate-form');
@@ -145,11 +163,12 @@
             var payload = {
                 csrf_token: csrfToken,
                 text: text,
-                model: 'flash',
+                model: selectedModel,
             };
 
             if (currentApiImage) {
                 payload.image = currentApiImage;
+                payload.thumbnail = currentThumbnail;
             }
 
             fetch('api/estimate.php', {
