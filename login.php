@@ -95,18 +95,24 @@ $users = ($step === 'username') ? get_all_usernames() : [];
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log In — Calorie Estimator</title>
+    <title>Log In &mdash; Carole</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header class="app-header">
-        <a href="index.php" class="app-title-link"><h1 class="app-title">Calorie Estimator</h1></a>
-        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">
-            <span class="theme-toggle-icon" aria-hidden="true"></span>
+    <!-- Floating controls -->
+    <div class="floating-controls">
+        <button id="theme-toggle" class="fab-btn" type="button" aria-label="Toggle dark mode">
+            <span class="material-symbols-outlined theme-icon">light_mode</span>
         </button>
-    </header>
+    </div>
 
     <main class="app-main">
+        <div class="page-hero">
+            <h1 class="brand-title"><a href="index.php" style="text-decoration:none;color:inherit;">Carole</a></h1>
+            <p class="brand-subtitle">The calorie estimator</p>
+        </div>
+
         <div class="login-card">
             <h2 class="login-heading">Log In</h2>
 
@@ -128,7 +134,7 @@ $users = ($step === 'username') ? get_all_usernames() : [];
                         autofocus
                         autocomplete="off"
                     >
-                    <button type="submit" class="submit-btn">Continue</button>
+                    <button type="submit" class="submit-pill" style="width:100%;height:44px;">Continue</button>
                 </form>
             <?php else: ?>
                 <p class="login-subtitle">Choose a username or create a new one.</p>
@@ -161,17 +167,13 @@ $users = ($step === 'username') ? get_all_usernames() : [];
                         required
                         <?php echo count($users) === 0 ? 'autofocus' : ''; ?>
                     >
-                    <button type="submit" class="submit-btn">Create & Log In</button>
+                    <button type="submit" class="submit-pill" style="width:100%;height:44px;">Create & Log In</button>
                 </form>
             <?php endif; ?>
 
             <a href="index.php" class="login-back-link">Back to estimator</a>
         </div>
     </main>
-
-    <footer class="app-footer">
-        <p>&copy; <?php echo date('Y'); ?> Calorie Estimator</p>
-    </footer>
 
     <script src="tokens.js"></script>
     <script src="app.js"></script>

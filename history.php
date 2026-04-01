@@ -78,23 +78,38 @@ $modelProviders = [
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>History — Calorie Estimator</title>
+    <title>History &mdash; Carole</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header class="app-header">
-        <a href="index.php" class="app-title-link"><h1 class="app-title">Calorie Estimator</h1></a>
-        <div class="header-actions">
-            <span class="header-username"><?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></span>
-            <a href="history.php" class="header-link header-link-active">History</a>
-            <a href="index.php?action=logout" class="header-link">Log out</a>
-            <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode">
-                <span class="theme-toggle-icon" aria-hidden="true"></span>
+    <!-- Floating controls -->
+    <div class="floating-controls">
+        <button id="theme-toggle" class="fab-btn" type="button" aria-label="Toggle dark mode">
+            <span class="material-symbols-outlined theme-icon">light_mode</span>
+        </button>
+        <div class="profile-dropdown" id="profile-dropdown">
+            <button class="fab-btn" type="button" id="profile-btn" aria-label="Profile menu">
+                <span class="material-symbols-outlined">person</span>
             </button>
+            <div class="profile-menu hidden" id="profile-menu">
+                <span class="profile-menu-username"><?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></span>
+                <a href="index.php" class="profile-menu-item">
+                    <span class="material-symbols-outlined">home</span> Home
+                </a>
+                <a href="index.php?action=logout" class="profile-menu-item profile-menu-danger">
+                    <span class="material-symbols-outlined">logout</span> Log out
+                </a>
+            </div>
         </div>
-    </header>
+    </div>
 
     <main class="app-main">
+        <div class="page-hero">
+            <h1 class="brand-title"><a href="index.php" style="text-decoration:none;color:inherit;">Carole</a></h1>
+            <p class="brand-subtitle">The calorie estimator</p>
+        </div>
+
         <div class="history-page-header">
             <h2 class="history-title">Saved History</h2>
             <span class="history-count"><?php echo $totalMeals; ?> <?php echo $totalMeals === 1 ? 'entry' : 'entries'; ?></span>
@@ -141,7 +156,9 @@ $modelProviders = [
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="meal_id" value="<?php echo $meal['id']; ?>">
-                            <button type="submit" class="history-delete-btn" onclick="return confirm('Delete this entry?')">Delete</button>
+                            <button type="submit" class="history-delete-btn" onclick="return confirm('Delete this entry?')">
+                                <span class="material-symbols-outlined">delete</span> Delete
+                            </button>
                         </form>
                     </div>
                 <?php endforeach; ?>
@@ -150,20 +167,20 @@ $modelProviders = [
             <?php if ($totalPages > 1): ?>
                 <div class="pagination">
                     <?php if ($page > 1): ?>
-                        <a href="history.php?page=<?php echo $page - 1; ?>" class="pagination-link">&larr; Newer</a>
+                        <a href="history.php?page=<?php echo $page - 1; ?>" class="pagination-link">
+                            <span class="material-symbols-outlined">arrow_back</span> Newer
+                        </a>
                     <?php endif; ?>
                     <span class="pagination-info">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
                     <?php if ($page < $totalPages): ?>
-                        <a href="history.php?page=<?php echo $page + 1; ?>" class="pagination-link">Older &rarr;</a>
+                        <a href="history.php?page=<?php echo $page + 1; ?>" class="pagination-link">
+                            Older <span class="material-symbols-outlined">arrow_forward</span>
+                        </a>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
         <?php endif; ?>
     </main>
-
-    <footer class="app-footer">
-        <p>&copy; <?php echo date('Y'); ?> Calorie Estimator</p>
-    </footer>
 
     <script src="tokens.js"></script>
     <script src="app.js"></script>
