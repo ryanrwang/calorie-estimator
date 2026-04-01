@@ -134,29 +134,58 @@
         reader.readAsDataURL(file);
     }
 
-    // ── Usage indicator ──
+    // ── Usage ring ──
 
-    var usageIndicator = document.getElementById('usage-indicator');
+    var usageRingWrap = document.getElementById('usage-ring-wrap');
+    var usageRingFill = document.getElementById('usage-ring-fill');
+    var usageRingTooltip = document.getElementById('usage-ring-tooltip');
+    var compactUsageRing = document.getElementById('compact-usage-ring');
+    var compactRingFill = document.querySelector('.compact-ring-fill');
+    var compactUsageTooltip = document.getElementById('compact-usage-tooltip');
+    var RING_CIRCUMFERENCE = 2 * Math.PI * 10; // r=10 → ~62.83
+
+    function applyRingState(wrap, fill, tooltip, count, limit, label, fraction) {
+        if (tooltip) tooltip.textContent = label;
+        if (limit > 0 && fill) {
+            var offset = RING_CIRCUMFERENCE * (1 - fraction);
+            fill.style.strokeDasharray = RING_CIRCUMFERENCE;
+            fill.style.strokeDashoffset = offset;
+            if (fraction >= 0.8) {
+                wrap.classList.add('usage-ring-warn');
+            } else {
+                wrap.classList.remove('usage-ring-warn');
+            }
+        } else if (fill) {
+            fill.style.strokeDasharray = RING_CIRCUMFERENCE;
+            fill.style.strokeDashoffset = RING_CIRCUMFERENCE;
+            wrap.classList.remove('usage-ring-warn');
+        }
+        wrap.classList.remove('hidden');
+    }
 
     function updateUsageDisplay(usage) {
-        if (!usageIndicator || !usage) return;
+        if (!usage) return;
 
         var bucket = getUsageBucket(selectedModel);
         var count = usage[bucket] || 0;
-        var html = '';
+        var limit = 0;
+        var label = '';
 
         if (bucket === 'flash') {
-            var cls = count >= 230 ? ' usage-warn' : '';
-            html = '<span class="usage-text' + cls + '">' + count + '/250 Flash today</span>';
+            limit = 250;
+            label = count + ' / ' + limit + ' Flash today';
         } else if (bucket === 'pro') {
-            var cls = count >= 85 ? ' usage-warn' : '';
-            html = '<span class="usage-text' + cls + '">' + count + '/100 Pro today</span>';
+            limit = 100;
+            label = count + ' / ' + limit + ' Pro today';
         } else if (bucket === 'claude') {
-            html = '<span class="usage-text">' + count + ' Claude today</span>';
+            label = count + ' Claude today';
         }
 
-        usageIndicator.innerHTML = html;
-        usageIndicator.classList.remove('hidden');
+        var fraction = limit > 0 ? Math.min(count / limit, 1) : 0;
+
+        // Update both rings
+        if (usageRingWrap) applyRingState(usageRingWrap, usageRingFill, usageRingTooltip, count, limit, label, fraction);
+        if (compactUsageRing) applyRingState(compactUsageRing, compactRingFill, compactUsageTooltip, count, limit, label, fraction);
     }
 
     function getUsageBucket(model) {
@@ -166,10 +195,8 @@
         return 'flash';
     }
 
-    // ── Copy to clipboard ──
+    // ── Copy to clipboard (hidden for now) ──
 
-    var copyBtn = document.getElementById('copy-btn');
-    var copyText = document.getElementById('copy-text');
     var lastResultText = '';
 
     function parseMidpointList(text) {
@@ -196,32 +223,9 @@
         return items;
     }
 
-    function copyForLoseIt() {
-        if (!lastResultText) return;
-        var items = parseMidpointList(lastResultText);
-        var copyString = items.length > 0 ? items.join('\n') : lastResultText.trim();
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(copyString).then(function () {
-                showCopyConfirmation();
-            }, function () {
-                showCopyConfirmation();
-            });
-        }
-    }
-
-    function showCopyConfirmation() {
-        if (!copyText || !copyBtn) return;
-        copyText.textContent = 'Copied!';
-        copyBtn.classList.add('action-btn-success');
-        setTimeout(function () {
-            copyText.textContent = 'Copy for LoseIt';
-            copyBtn.classList.remove('action-btn-success');
-        }, 1500);
-    }
-
-    if (copyBtn) {
-        copyBtn.addEventListener('click', copyForLoseIt);
+    function parseMidpointListForCopy(text) {
+        var items = parseMidpointList(text);
+        return items.length > 0 ? items.join('\n') : text.trim();
     }
 
     // ── Form handling ──
@@ -239,7 +243,7 @@
     var resultsContent = document.getElementById('results-content');
     var inputCard = document.getElementById('input-card');
     var loadingState = document.getElementById('loading-state');
-    var newEstimateBtn = document.getElementById('new-estimate-btn');
+    var calorieHero = document.getElementById('calorie-hero');
 
     var currentApiImage = null;
     var currentThumbnail = null;
@@ -287,28 +291,36 @@
     // Track last payload for retry
     var lastPayload = null;
 
-    function collapseInput() {
+    var compactActions = document.getElementById('compact-actions');
+
+    function compactInput() {
         if (!inputCard) return;
-        // Set explicit max-height before collapsing for smooth transition
-        inputCard.style.maxHeight = inputCard.scrollHeight + 'px';
-        // Force reflow
-        inputCard.offsetHeight;
-        inputCard.classList.add('collapsed');
+        isCompactClickable = false;
+        inputCard.classList.add('compact');
+        if (foodInput) {
+            foodInput.setAttribute('readonly', '');
+        }
     }
 
     function expandInput() {
         if (!inputCard) return;
-        inputCard.classList.remove('collapsed');
-        inputCard.style.maxHeight = '';
+        isCompactClickable = false;
+        inputCard.classList.remove('compact');
+        if (foodInput) {
+            foodInput.removeAttribute('readonly');
+        }
     }
 
     function submitEstimate(payload) {
         lastPayload = payload;
 
-        // Collapse input, show loading
-        collapseInput();
+        // Compact input, show loading inside results container
+        compactInput();
+        resultsContent.innerHTML = '';
+        if (calorieHero) calorieHero.classList.add('hidden');
         if (loadingState) loadingState.classList.remove('hidden');
-        resultsSection.classList.add('hidden');
+        resultsSection.classList.add('results-loading');
+        resultsSection.classList.remove('hidden');
 
         submitBtn.disabled = true;
         submitText.textContent = 'Estimating...';
@@ -337,6 +349,8 @@
                 }
             } else {
                 lastResultText = data.result;
+                var totalRange = parseTotalRange(data.result);
+                renderCalorieHero(totalRange);
                 showResults(formatResponse(data.result), false);
 
                 saveToHistory({
@@ -399,42 +413,69 @@
         });
     }
 
-    function showResults(html, isError) {
-        resultsContent.innerHTML = html;
-        resultsSection.classList.remove('hidden');
-        if (copyBtn) {
-            if (isError) {
-                copyBtn.classList.add('hidden');
-            } else {
-                copyBtn.classList.remove('hidden');
+    function parseTotalRange(text) {
+        var lines = text.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (/^total/i.test(line)) {
+                var match = line.match(/~?(\d+)\s*[\u2013\-]+\s*~?(\d+)/);
+                if (match) {
+                    return { low: parseInt(match[1], 10), high: parseInt(match[2], 10) };
+                }
             }
         }
+        return null;
+    }
+
+    function renderCalorieHero(range) {
+        if (!calorieHero || !range) {
+            if (calorieHero) calorieHero.classList.add('hidden');
+            return;
+        }
+        calorieHero.innerHTML =
+            '<span class="calorie-hero-number">' + range.low + '</span>' +
+            '<span class="calorie-hero-separator">&ndash;</span>' +
+            '<span class="calorie-hero-number">' + range.high + '</span>' +
+            '<span class="calorie-hero-unit">cal</span>';
+        calorieHero.classList.remove('hidden');
+    }
+
+    function showResults(html, isError) {
+        resultsSection.classList.remove('results-loading');
+        resultsContent.innerHTML = html;
+        resultsSection.classList.remove('hidden');
+        if (isError) {
+            if (calorieHero) calorieHero.classList.add('hidden');
+        }
+        // Enable compact input clicking after results are rendered
+        setTimeout(function () { isCompactClickable = true; }, 100);
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    // ── New estimate button ──
+    // ── Clicking compact input expands for editing ──
 
-    if (newEstimateBtn) {
-        newEstimateBtn.addEventListener('click', function () {
+    var isCompactClickable = false;
+
+    if (inputCard) {
+        inputCard.addEventListener('click', function (e) {
+            if (!isCompactClickable) return;
+            // Don't trigger on toolbar button clicks
+            if (e.target.closest('.toolbar-btn') || e.target.closest('.submit-pill') ||
+                e.target.closest('.model-select')) return;
+
             expandInput();
             resultsSection.classList.add('hidden');
             if (loadingState) loadingState.classList.add('hidden');
 
-            // Clear inputs
-            if (foodInput) {
-                foodInput.value = '';
-                foodInput.style.height = '';
-            }
-            currentApiImage = null;
-            currentThumbnail = null;
-            if (photoInput) photoInput.value = '';
-            if (photoPreview) photoPreview.classList.add('hidden');
-            if (photoPreviewImg) photoPreviewImg.src = '';
             lastResultText = '';
 
-            // Focus textarea
+            // Focus textarea and place cursor at end
             if (foodInput) {
-                setTimeout(function () { foodInput.focus(); }, 100);
+                setTimeout(function () {
+                    foodInput.focus();
+                    foodInput.style.height = 'auto';
+                    foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
+                }, 100);
             }
 
             // Re-expand history
@@ -444,17 +485,41 @@
 
     function formatResponse(text) {
         var lines = text.split('\n');
-        var html = '';
+        var itemsHtml = '';
+        var metaHtml = '';
+
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (!line) continue;
-            if (/^total/i.test(line)) {
-                html += '<p class="result-line result-total">' + escapeHtml(line) + '</p>';
+
+            var lowerLine = line.toLowerCase();
+
+            // Skip total line (hero already shows it)
+            if (/^total/i.test(lowerLine)) continue;
+
+            // Source/Note/Disclaimer → meta
+            if (lowerLine.indexOf('source') === 0 || lowerLine.indexOf('note') === 0 ||
+                lowerLine.indexOf('*') === 0 || lowerLine.indexOf('disclaimer') === 0) {
+                metaHtml += '<p class="result-meta">' + escapeHtml(line) + '</p>';
+                continue;
+            }
+
+            // Try to parse as "Name — low–high"
+            var match = line.match(/^(.+?)\s*[\u2014\u2013\-]+\s*~?(\d+)\s*[\u2013\-]+\s*~?(\d+)\s*(cal|kcal)?/i);
+            if (match) {
+                var name = match[1].replace(/^[-\u2022\u2013\u2014\*]\s*/, '').trim();
+                var range = match[2] + '\u2013' + match[3];
+                itemsHtml += '<div class="result-item">' +
+                    '<span class="result-item-name">' + escapeHtml(name) + '</span>' +
+                    '<span class="result-item-range">' + escapeHtml(range) + '</span>' +
+                    '</div>';
             } else {
-                html += '<p class="result-line">' + escapeHtml(line) + '</p>';
+                // Fallback for unparseable lines
+                itemsHtml += '<p class="result-line">' + escapeHtml(line) + '</p>';
             }
         }
-        return html;
+
+        return itemsHtml + metaHtml;
     }
 
     function escapeHtml(str) {
