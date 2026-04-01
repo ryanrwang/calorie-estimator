@@ -75,6 +75,18 @@ var t = window.TOKENS;
 element.style.color = t.semantic.color.text.secondary;
 ```
 
+## Input Card Expanded/Compact States
+
+The `.input-card` has two states: expanded (default, for editing) and compact (after submit, shows results). The compact state is toggled via `.input-card.compact` class, animated with the Web Animations API in `app.js`.
+
+### Critical rules — do not break:
+- **Text must not shift** between expanded and compact. Both states use `padding-left: var(--spacing-md)` (16px) and `padding-top: var(--spacing-md)` (16px) on the `.food-input` textarea. The compact card has NO card-level padding — all positioning comes from the textarea's own padding.
+- **Compact height is explicitly set** to `59px !important` on `.food-input` (16px top + 27px line-height + 16px bottom). Do NOT use `height: auto` on a textarea — it resolves to the `rows` attribute, not the content. The `!important` is required to beat inline `style.height` set by the auto-resize JS.
+- **Layout axis stays the same.** Both states use `flex-direction: column`. Do NOT change compact to `flex-direction: row` — it makes vertical text alignment impossible to match because `align-items: center` depends on sibling heights.
+- **Compact actions are absolutely positioned** (`position: absolute; right; top: 50%; transform: translateY(-50%)`) inside the card. They are NOT flex siblings of the textarea.
+- **Toolbar and photo-preview use `display: none`** in compact. Do NOT try to animate these with opacity/max-height — it causes visible flashing during the transition.
+- **Height animation uses Web Animations API** (FLIP pattern in `compactInput()`/`expandInput()`). The `.animating` class temporarily sets `overflow: hidden` to clip content during the transition.
+
 ## Environment
 - **Mac:** `gh` CLI is installed via Homebrew at `/opt/homebrew/bin/gh`.
 - **Windows:** `gh` CLI is installed at `/c/Program Files/GitHub CLI/gh.exe` — use this full path since it's not on the bash PATH.

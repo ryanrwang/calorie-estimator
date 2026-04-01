@@ -73,6 +73,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     aria-label="Describe what you ate"
                 ></textarea>
 
+                <div class="compact-actions" id="compact-actions">
+                    <div id="compact-usage-ring" class="usage-ring-wrap hidden">
+                        <svg class="usage-ring" viewBox="0 0 24 24" width="24" height="24">
+                            <circle class="usage-ring-track" cx="12" cy="12" r="10" />
+                            <circle class="usage-ring-fill compact-ring-fill" cx="12" cy="12" r="10" />
+                        </svg>
+                        <span class="usage-ring-tooltip" id="compact-usage-tooltip"></span>
+                    </div>
+                    <button type="button" class="compact-edit-btn" aria-label="Edit search">
+                        <span class="material-symbols-outlined">edit</span>
+                    </button>
+                </div>
+
                 <div id="photo-preview" class="photo-preview hidden">
                     <img id="photo-preview-img" class="photo-preview-img" alt="Meal photo preview">
                     <button type="button" id="photo-remove" class="photo-remove" aria-label="Remove photo">
@@ -117,35 +130,30 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                     <div class="toolbar-spacer"></div>
 
+                    <div id="usage-ring-wrap" class="usage-ring-wrap hidden">
+                        <svg class="usage-ring" viewBox="0 0 24 24" width="24" height="24">
+                            <circle class="usage-ring-track" cx="12" cy="12" r="10" />
+                            <circle id="usage-ring-fill" class="usage-ring-fill" cx="12" cy="12" r="10" />
+                        </svg>
+                        <span id="usage-ring-tooltip" class="usage-ring-tooltip"></span>
+                    </div>
+
                     <button type="submit" id="submit-btn" class="submit-pill">
                         <span id="submit-text">Estimate</span>
                         <span id="submit-spinner" class="spinner hidden" aria-hidden="true"></span>
                     </button>
                 </div>
             </div>
-
-            <div id="usage-indicator" class="usage-indicator hidden"></div>
         </form>
 
-        <!-- Loading state -->
-        <div id="loading-state" class="loading-state hidden">
-            <div class="loading-spinner-large"></div>
-            <p class="loading-text">Estimating calories...</p>
-        </div>
-
-        <!-- Results area -->
+        <!-- Results area (also used for loading state) -->
         <section id="results" class="results hidden" aria-live="polite">
-            <div id="results-content" class="results-content"></div>
-            <div class="results-actions">
-                <button type="button" id="copy-btn" class="action-btn hidden">
-                    <span class="material-symbols-outlined">content_copy</span>
-                    <span id="copy-text">Copy for LoseIt</span>
-                </button>
-                <button type="button" id="new-estimate-btn" class="action-btn">
-                    <span class="material-symbols-outlined">add</span>
-                    <span>New estimate</span>
-                </button>
+            <div id="calorie-hero" class="calorie-hero hidden"></div>
+            <div id="loading-state" class="loading-state hidden">
+                <div class="loading-spinner-large"></div>
+                <p class="loading-text">Estimating calories...</p>
             </div>
+            <div id="results-content" class="results-content"></div>
         </section>
 
         <!-- Local history -->
