@@ -293,22 +293,47 @@
 
     var compactActions = document.getElementById('compact-actions');
 
+    var ANIM_DURATION = 250;
+    var ANIM_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+    function animateCardHeight(fromHeight, toHeight) {
+        inputCard.classList.add('animating');
+        var anim = inputCard.animate([
+            { height: fromHeight + 'px' },
+            { height: toHeight + 'px' }
+        ], {
+            duration: ANIM_DURATION,
+            easing: ANIM_EASING,
+        });
+        anim.onfinish = function () {
+            inputCard.classList.remove('animating');
+        };
+    }
+
     function compactInput() {
         if (!inputCard) return;
         isCompactClickable = false;
+
+        var startHeight = inputCard.offsetHeight;
+
         inputCard.classList.add('compact');
-        if (foodInput) {
-            foodInput.setAttribute('readonly', '');
-        }
+        if (foodInput) foodInput.setAttribute('readonly', '');
+
+        var endHeight = inputCard.offsetHeight;
+        animateCardHeight(startHeight, endHeight);
     }
 
     function expandInput() {
         if (!inputCard) return;
         isCompactClickable = false;
+
+        var startHeight = inputCard.offsetHeight;
+
         inputCard.classList.remove('compact');
-        if (foodInput) {
-            foodInput.removeAttribute('readonly');
-        }
+        if (foodInput) foodInput.removeAttribute('readonly');
+
+        var endHeight = inputCard.offsetHeight;
+        animateCardHeight(startHeight, endHeight);
     }
 
     function submitEstimate(payload) {

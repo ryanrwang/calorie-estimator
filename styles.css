@@ -188,9 +188,13 @@ a:hover {
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-md);
     overflow: visible;
-    transition: box-shadow var(--transition-fast),
-                border-radius var(--transition-normal),
-                padding var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow var(--transition-slow);
+}
+
+.input-card.animating {
+    overflow: hidden;
 }
 
 .input-card:focus-within {
@@ -209,10 +213,7 @@ a:hover {
 
 .input-card.compact {
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    padding: var(--spacing-md);
-    gap: var(--spacing-sm);
+    position: relative;
     box-shadow: none;
 }
 
@@ -221,17 +222,16 @@ a:hover {
 }
 
 .input-card.compact .food-input {
+    /* 16px top + 27px line (18px × 1.5) + 16px bottom = 59px */
     min-height: 0;
-    height: 27px !important;
-    padding: 0;
+    height: 59px !important;
+    padding: var(--spacing-md) 80px var(--spacing-md) var(--spacing-md);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
     pointer-events: none;
     color: var(--color-text-secondary);
-    flex: 1;
-    min-width: 0;
 }
 
 .input-card.compact .photo-preview,
@@ -243,7 +243,10 @@ a:hover {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    flex-shrink: 0;
+    position: absolute;
+    right: var(--spacing-sm);
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .compact-actions {
@@ -289,7 +292,6 @@ a:hover {
     resize: none;
     overflow: hidden;
     min-height: 80px;
-    transition: height 0.15s ease;
 }
 
 .food-input:focus {
