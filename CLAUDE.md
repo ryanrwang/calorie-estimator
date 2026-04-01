@@ -108,4 +108,35 @@ If already on `main` with uncommitted changes, commit and push directly — no P
 
 ## Current Session
 
-No active session. Replace this section with session content before starting work.
+Session 1 status: COMPLETE
+
+### What was built:
+- Core estimation flow working end to end
+- Text input (primary) and photo upload (secondary) both functional
+- Gemini 2.5 Flash API integration with Grounding with Google Search enabled
+- api/estimate.php structured with provider-based branching (Gemini path implemented, Anthropic path stubbed/ready for Session 2)
+- Model identifier is a variable, defaults to "flash"
+- Client-side image compression (1024px for API) and thumbnail generation (~200px base64)
+- CSRF protection on all forms via includes/csrf.php
+- localStorage history on the main page (reverse-chronological, with thumbnails, stores model_used)
+- Mobile-first layout with text input as the hero element
+- All UI styled with design tokens — no hardcoded values
+- Theme toggle preserved from scaffold
+
+### Architecture notes for next session:
+- Auth is optional, not gating. Estimation flow and localStorage history work without login
+- PHP sessions started for CSRF. Session 2 piggybacks for auth
+- includes/config.php has gemini_api_key filled in, plus commented-out fields for anthropic_api_key, DB credentials, and app_passphrase
+- api/estimate.php has provider branching: gemini path works, anthropic path needs implementing in Session 2
+- The frontend sends model identifier in the request. Session 2 adds the model toggle UI
+- The frontend sends base64 thumbnail in the payload. Session 2 stores it in DB for logged-in users
+- localStorage history stores model_used per entry
+- localStorage history on index.php should never be removed or replaced
+- Gemini free tier: Flash (10 RPM, 250 RPD), Flash Thinking (same, uses thinkingConfig), Pro (5 RPM, 100 RPD)
+- Claude API (Session 2): Sonnet and Opus via Anthropic API, paid per token, no grounding (uses training knowledge for restaurant lookups)
+
+### Known issues or considerations for next session:
+- Flash Thinking and Pro model paths are mapped in estimate.php but the frontend hardcodes "flash" — Session 2 adds the model toggle UI
+- No rate limiting or API usage tracking yet — Session 3 adds the per-provider counter
+- No error retry or user-friendly error messages beyond basic display — Session 3 polishes this
+- localStorage has a ~5MB limit; history is capped at 50 entries with thumbnail cleanup to stay within bounds
