@@ -1,0 +1,18 @@
+# Server-generated
+cache/
+error_log
+
+# Claude Code local config
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+
+# Project-specific
+includes/config.php
+data/*.json
