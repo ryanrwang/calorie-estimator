@@ -22,8 +22,6 @@
         var stored = getStoredTheme();
         if (stored === 'dark' || stored === 'light') {
             setTheme(stored);
-        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            setTheme('dark');
         } else {
             setTheme('light');
         }
@@ -551,11 +549,13 @@
         var history = getHistory();
 
         if (history.length === 0) {
-            historyList.innerHTML = '<p class="history-empty">No estimates yet.</p>';
+            historyList.innerHTML = '';
             if (clearBtn) clearBtn.classList.add('hidden');
+            if (historySection) historySection.classList.add('hidden');
             return;
         }
 
+        if (historySection) historySection.classList.remove('hidden');
         if (clearBtn) clearBtn.classList.remove('hidden');
 
         var html = '';
@@ -603,5 +603,193 @@
     // Render history on page load
     pruneHistoryIfNeeded();
     renderHistory();
+
+    // ── Login dialog ──
+
+    var loginDialog = document.getElementById('login-dialog');
+    var loginOpenBtn = document.getElementById('login-open-btn');
+    var loginCloseBtn = document.getElementById('login-close-btn');
+    var loginError = document.getElementById('login-error');
+    var loginStepPassphrase = document.getElementById('login-step-passphrase');
+    var loginStepUsername = document.getElementById('login-step-username');
+    var loginPassphraseInput = document.getElementById('login-passphrase');
+    var loginPassphraseBtn = document.getElementById('login-passphrase-btn');
+    var loginUserList = document.getElementById('login-user-list');
+    var loginDivider = document.getElementById('login-divider');
+    var loginNewUsername = document.getElementById('login-new-username');
+    var loginCreateBtn = document.getElementById('login-create-btn');
+
+    var loginCsrf = window.APP_CSRF || '';
+
+    function showLoginError(msg) {
+        if (!loginError) return;
+        loginError.textContent = msg;
+        loginError.classList.remove('hidden');
+    }
+
+    function hideLoginError() {
+        if (!loginError) return;
+        loginError.textContent = '';
+        loginError.classList.add('hidden');
+    }
+
+    if (loginOpenBtn && loginDialog) {
+        loginOpenBtn.addEventListener('click', function () {
+            hideLoginError();
+            loginDialog.showModal();
+            if (loginPassphraseInput) loginPassphraseInput.focus();
+        });
+    }
+
+    if (loginCloseBtn && loginDialog) {
+        loginCloseBtn.addEventListener('click', function () {
+            loginDialog.close();
+        });
+    }
+
+    // Close on backdrop click
+    if (loginDialog) {
+        loginDialog.addEventListener('click', function (e) {
+            if (e.target === loginDialog) loginDialog.close();
+        });
+    }
+
+    // Toggle passphrase visibility
+    var loginTogglePass = document.getElementById('login-toggle-pass');
+    var loginTogglePassIcon = document.getElementById('login-toggle-pass-icon');
+    if (loginTogglePass && loginPassphraseInput) {
+        loginTogglePass.addEventListener('click', function () {
+            var isPassword = loginPassphraseInput.type === 'password';
+            loginPassphraseInput.type = isPassword ? 'text' : 'password';
+            if (loginTogglePassIcon) loginTogglePassIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+            loginPassphraseInput.focus();
+        });
+    }
+
+    // Step 1: Verify passphrase
+    if (loginPassphraseBtn) {
+        loginPassphraseBtn.addEventListener('click', submitPassphrase);
+    }
+    if (loginPassphraseInput) {
+        loginPassphraseInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') submitPassphrase();
+        });
+    }
+
+    function submitPassphrase() {
+        var passphrase = loginPassphraseInput ? loginPassphraseInput.value.trim() : '';
+        if (!passphrase) return;
+
+        hideLoginError();
+        loginPassphraseBtn.disabled = true;
+        loginPassphraseBtn.textContent = 'Verifying...';
+
+        fetch('api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'passphrase', passphrase: passphrase, csrf_token: loginCsrf }),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                if (data.csrf_token) loginCsrf = data.csrf_token;
+                showUsernameStep(data.users || []);
+            } else {
+                showLoginError(data.error || 'Incorrect passphrase.');
+            }
+        })
+        .catch(function () {
+            showLoginError('Connection error. Please try again.');
+        })
+        .finally(function () {
+            loginPassphraseBtn.disabled = false;
+            loginPassphraseBtn.textContent = 'Continue';
+        });
+    }
+
+    function showUsernameStep(users) {
+        if (loginStepPassphrase) loginStepPassphrase.classList.add('hidden');
+        if (loginStepUsername) loginStepUsername.classList.remove('hidden');
+
+        if (loginUserList && users.length > 0) {
+            var html = '';
+            for (var i = 0; i < users.length; i++) {
+                html += '<button type="button" class="login-user-btn" data-user-id="' + users[i].id + '">' +
+                    escapeHtml(users[i].username) + '</button>';
+            }
+            loginUserList.innerHTML = html;
+            if (loginDivider) loginDivider.classList.remove('hidden');
+
+            var userBtns = loginUserList.querySelectorAll('.login-user-btn');
+            for (var j = 0; j < userBtns.length; j++) {
+                userBtns[j].addEventListener('click', function () {
+                    selectUser(parseInt(this.getAttribute('data-user-id'), 10));
+                });
+            }
+        } else {
+            if (loginUserList) loginUserList.innerHTML = '';
+            if (loginDivider) loginDivider.classList.add('hidden');
+            if (loginNewUsername) loginNewUsername.focus();
+        }
+    }
+
+    function selectUser(userId) {
+        hideLoginError();
+        fetch('api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'select_user', user_id: userId, csrf_token: loginCsrf }),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                window.location.reload();
+            } else {
+                showLoginError(data.error || 'Could not log in.');
+            }
+        })
+        .catch(function () {
+            showLoginError('Connection error. Please try again.');
+        });
+    }
+
+    if (loginCreateBtn) {
+        loginCreateBtn.addEventListener('click', createUser);
+    }
+    if (loginNewUsername) {
+        loginNewUsername.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') createUser();
+        });
+    }
+
+    function createUser() {
+        var username = loginNewUsername ? loginNewUsername.value.trim() : '';
+        if (!username) return;
+
+        hideLoginError();
+        loginCreateBtn.disabled = true;
+        loginCreateBtn.textContent = 'Creating...';
+
+        fetch('api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'create_user', username: username, csrf_token: loginCsrf }),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                window.location.reload();
+            } else {
+                showLoginError(data.error || 'Could not create user.');
+            }
+        })
+        .catch(function () {
+            showLoginError('Connection error. Please try again.');
+        })
+        .finally(function () {
+            loginCreateBtn.disabled = false;
+            loginCreateBtn.textContent = 'Create & Log In';
+        });
+    }
 
 })();

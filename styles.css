@@ -230,7 +230,7 @@ a:hover {
 }
 
 .food-input::placeholder {
-    color: var(--color-text-tertiary);
+    color: var(--color-text-placeholder);
 }
 
 /* ── Photo preview (inside card) ── */
@@ -711,6 +711,91 @@ a:hover {
 .model-badge-claude {
     background-color: var(--color-status-warningBg);
     color: var(--color-status-warningText);
+}
+
+/* ── Login dialog ── */
+.login-dialog {
+    border: none;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    padding: 0;
+    max-width: 400px;
+    width: calc(100% - var(--spacing-lg));
+    box-shadow: var(--shadow-xl);
+    margin: auto;
+}
+
+.login-dialog::backdrop {
+    background-color: var(--color-bg-overlay);
+}
+
+#login-step-passphrase .login-form {
+    gap: var(--spacing-md);
+}
+
+.login-passphrase-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.login-passphrase-wrapper .login-input {
+    width: 100%;
+    padding-right: 44px;
+}
+
+.login-toggle-visibility {
+    position: absolute;
+    right: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.login-toggle-visibility:hover {
+    color: var(--color-text-secondary);
+}
+
+.login-dialog-content {
+    padding: var(--spacing-lg);
+}
+
+.login-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+.login-dialog-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.login-dialog-close:hover {
+    background-color: var(--color-interactive-hover);
+    color: var(--color-text-primary);
 }
 
 /* ── Login page ── */

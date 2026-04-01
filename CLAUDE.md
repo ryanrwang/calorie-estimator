@@ -11,7 +11,9 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 
 ## Running / Testing
 - Open `index.php` via a local PHP server (`php -S localhost:8000`) or test on Bluehost after deploy
-- **Windows:** PHP 8.4 is installed via winget at `C:\Users\DarkD\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.4_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe` — a `.claude/launch.json` is configured for `preview_start` with this path
+- **Windows:** PHP 8.4 is installed via winget at `C:\Users\DarkD\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.4_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe`
+- **Mac:** PHP is installed via Homebrew at `/opt/homebrew/bin/php`
+- `.claude/launch.json` uses `"php"` as the executable — works cross-platform as long as PHP is on PATH
 - The Gemini API calls require the server to have outbound HTTPS access (Bluehost does)
 
 ## Key Files

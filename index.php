@@ -44,9 +44,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             </div>
         </div>
         <?php else: ?>
-        <a href="login.php" class="fab-btn" aria-label="Log in">
+        <button type="button" class="fab-btn" id="login-open-btn" aria-label="Log in">
             <span class="material-symbols-outlined">login</span>
-        </a>
+        </button>
         <?php endif; ?>
     </div>
 
@@ -147,7 +147,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         </section>
 
         <!-- Local history -->
-        <section id="history" class="history-section">
+        <section id="history" class="history-section hidden">
             <div class="history-toggle" id="history-toggle">
                 <span class="history-title">History</span>
                 <span class="history-toggle-actions">
@@ -163,7 +163,61 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         </section>
     </main>
 
+    <?php if (!$loggedIn): ?>
+    <dialog id="login-dialog" class="login-dialog">
+        <div class="login-dialog-content">
+            <div class="login-dialog-header">
+                <h2 class="login-heading">Log In</h2>
+                <button type="button" class="login-dialog-close" id="login-close-btn" aria-label="Close">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="login-error" class="login-error hidden"></div>
+
+            <!-- Step 1: Passphrase -->
+            <div id="login-step-passphrase">
+                <div class="login-form">
+                    <div class="login-passphrase-wrapper">
+                        <input
+                            type="password"
+                            id="login-passphrase"
+                            class="login-input"
+                            placeholder="Passphrase"
+                            autocomplete="off"
+                        >
+                        <button type="button" id="login-toggle-pass" class="login-toggle-visibility" aria-label="Toggle passphrase visibility">
+                            <span class="material-symbols-outlined" id="login-toggle-pass-icon">visibility</span>
+                        </button>
+                    </div>
+                    <button type="button" id="login-passphrase-btn" class="submit-pill" style="width:100%;height:44px;">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Username selection/creation -->
+            <div id="login-step-username" class="hidden">
+                <p class="login-subtitle">Choose a username or create a new one.</p>
+                <div id="login-user-list" class="login-form login-user-list"></div>
+                <div id="login-divider" class="login-divider hidden"><span>or</span></div>
+                <div class="login-form">
+                    <label class="login-label" for="login-new-username">New username</label>
+                    <input
+                        type="text"
+                        id="login-new-username"
+                        class="login-input"
+                        maxlength="50"
+                        pattern="[a-zA-Z0-9_-]+"
+                        placeholder="e.g. alex"
+                    >
+                    <button type="button" id="login-create-btn" class="submit-pill" style="width:100%;height:44px;">Create & Log In</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+    <?php endif; ?>
+
     <script>window.APP_AUTH = <?php echo json_encode($loggedIn); ?>;</script>
+    <script>window.APP_CSRF = <?php echo json_encode($csrfToken); ?>;</script>
     <script src="tokens.js"></script>
     <script src="app.js"></script>
 </body>
