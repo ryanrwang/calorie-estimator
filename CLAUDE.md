@@ -6,7 +6,7 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 - **Frontend:** Vanilla JS + CSS (no frameworks, no build step)
 - **Backend:** PHP (Bluehost shared hosting)
 - **Database:** MySQL (added in Session 2)
-- **AI:** Gemini 2.5 Flash / Flash Thinking / Pro via Google AI Studio API (free tier)
+- **AI:** Gemini 2.5 Flash / Flash Thinking / Pro via Google AI Studio API (free tier) + Claude Sonnet / Opus via Anthropic API (paid)
 - **Deployment:** GitHub Actions SFTP to Bluehost
 
 ## Running / Testing
@@ -36,6 +36,8 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 - localStorage history and MySQL history are independent and do not sync
 - Thumbnails are ~200px base64 JPEG strings, never full images
 - API usage counter tracks two buckets: flash (250 RPD) and pro (100 RPD)
+- Two AI providers: Gemini (free tier, has grounding for restaurant lookups) and Claude (paid, uses training knowledge). Provider routing handled in api/estimate.php
+- Claude Sonnet and Opus are only available to logged-in users
 - CSRF protection on all forms
 - Client-side image compression: 1024px for API, 200px for thumbnails
 
