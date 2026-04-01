@@ -2,6 +2,7 @@
 session_start();
 
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/auth.php';
 $config = require __DIR__ . '/../includes/config.php';
 
 // --- JSON response helpers ---
@@ -42,6 +43,7 @@ if (!csrf_validate(isset($body['csrf_token']) ? $body['csrf_token'] : '')) {
 
 $inputText = isset($body['text']) ? trim($body['text']) : '';
 $inputImage = isset($body['image']) ? $body['image'] : null; // base64 string
+$inputThumbnail = isset($body['thumbnail']) ? $body['thumbnail'] : null;
 $modelId = isset($body['model']) ? $body['model'] : 'flash';
 
 if ($inputText === '' && !$inputImage) {
@@ -98,6 +100,12 @@ if (isset($geminiModels[$modelId])) {
     $provider = 'anthropic';
 } else {
     // Default to flash for unknown models
+    $modelId = 'flash';
+    $provider = 'gemini';
+}
+
+// Claude models require login
+if ($provider === 'anthropic' && !is_logged_in()) {
     $modelId = 'flash';
     $provider = 'gemini';
 }
@@ -203,17 +211,142 @@ if ($provider === 'gemini') {
         json_error('Empty response from Gemini', 502);
     }
 
+    // Save to DB if logged in
+    save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+
     json_response([
         'result' => $resultText,
         'model'  => $modelId,
     ]);
 }
 
-// --- Anthropic provider (Session 2) ---
+// --- Anthropic provider ---
 
 if ($provider === 'anthropic') {
-    // TODO: Implement in Session 2
-    // Will use https://api.anthropic.com/v1/messages
-    // Different auth header (x-api-key), different request format
-    json_error('Claude models are not yet available. Coming in Session 2.', 501);
+    $apiKey = isset($config['anthropic_api_key']) ? $config['anthropic_api_key'] : '';
+    if (!$apiKey || $apiKey === 'YOUR_ANTHROPIC_API_KEY_HERE') {
+        json_error('Anthropic API key not configured', 500);
+    }
+
+    $anthropicModel = $anthropicModels[$modelId];
+
+    // Build messages content
+    $contentBlocks = [];
+
+    if ($inputImage) {
+        // Strip data URI prefix if present
+        $imageData = $inputImage;
+        $mimeType = 'image/jpeg';
+        if (preg_match('/^data:(image\/[a-z]+);base64,/', $inputImage, $matches)) {
+            $mimeType = $matches[1];
+            $imageData = substr($inputImage, strlen($matches[0]));
+        }
+        $contentBlocks[] = [
+            'type' => 'image',
+            'source' => [
+                'type' => 'base64',
+                'media_type' => $mimeType,
+                'data' => $imageData,
+            ],
+        ];
+    }
+
+    $textContent = $inputText !== '' ? $inputText : 'What is this meal and how many calories?';
+    $contentBlocks[] = [
+        'type' => 'text',
+        'text' => $textContent,
+    ];
+
+    $payload = [
+        'model' => $anthropicModel,
+        'max_tokens' => 1024,
+        'system' => $systemPrompt,
+        'messages' => [
+            [
+                'role' => 'user',
+                'content' => $contentBlocks,
+            ],
+        ],
+    ];
+
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'x-api-key: ' . $apiKey,
+            'anthropic-version: 2023-06-01',
+        ],
+        CURLOPT_POSTFIELDS => json_encode($payload),
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 90,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlError) {
+        json_error('Failed to connect to Claude API: ' . $curlError, 502);
+    }
+
+    $data = json_decode($response, true);
+
+    if ($httpCode !== 200) {
+        $errorMsg = 'Claude API error';
+        if (isset($data['error']['message'])) {
+            $errorMsg = $data['error']['message'];
+        }
+        json_error($errorMsg, 502);
+    }
+
+    // Extract text from response
+    $resultText = '';
+    if (isset($data['content'])) {
+        foreach ($data['content'] as $block) {
+            if (isset($block['type']) && $block['type'] === 'text' && isset($block['text'])) {
+                $resultText .= $block['text'];
+            }
+        }
+    }
+
+    if ($resultText === '') {
+        json_error('Empty response from Claude', 502);
+    }
+
+    // Save to DB if logged in
+    save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+
+    json_response([
+        'result' => $resultText,
+        'model'  => $modelId,
+    ]);
+}
+
+// --- Save to database (logged-in users only) ---
+
+function save_to_db($inputText, $inputImage, $thumbnail, $modelId, $responseText) {
+    if (!is_logged_in()) {
+        return;
+    }
+
+    try {
+        $db = get_db();
+        $stmt = $db->prepare(
+            'INSERT INTO meals (user_id, input_type, input_text, thumbnail, model_used, gemini_response, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, NOW())'
+        );
+        $stmt->execute([
+            get_current_user_id(),
+            $inputImage ? 'photo' : 'text',
+            $inputText !== '' ? $inputText : null,
+            $thumbnail,
+            $modelId,
+            $responseText,
+        ]);
+    } catch (Exception $e) {
+        // Log but don't fail the request
+        error_log('Failed to save meal to DB: ' . $e->getMessage());
+    }
 }

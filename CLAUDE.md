@@ -108,35 +108,37 @@ If already on `main` with uncommitted changes, commit and push directly — no P
 
 ## Current Session
 
-Session 1 status: COMPLETE
+Session 2 status: COMPLETE
 
-### What was built:
-- Core estimation flow working end to end
-- Text input (primary) and photo upload (secondary) both functional
-- Gemini 2.5 Flash API integration with Grounding with Google Search enabled
-- api/estimate.php structured with provider-based branching (Gemini path implemented, Anthropic path stubbed/ready for Session 2)
-- Model identifier is a variable, defaults to "flash"
-- Client-side image compression (1024px for API) and thumbnail generation (~200px base64)
-- CSRF protection on all forms via includes/csrf.php
-- localStorage history on the main page (reverse-chronological, with thumbnails, stores model_used)
-- Mobile-first layout with text input as the hero element
-- All UI styled with design tokens — no hardcoded values
-- Theme toggle preserved from scaffold
+### What was built in Session 1:
+- Core estimation flow, Gemini 2.5 Flash + grounding
+- Provider-based branching in estimate.php (Gemini implemented)
+- Image compression + thumbnails, CSRF, localStorage history (with model_used), design tokens
+
+### What was built in Session 2:
+- Passphrase login with username selection (no per-user passwords)
+- PHP session auth. Users table: id, username, created_at
+- Anthropic API integration: Sonnet and Opus via /v1/messages endpoint
+- 5 model options for logged-in users: Flash, Flash Thinking, Pro (Gemini) + Sonnet, Opus (Claude)
+- Pro labeled "100/day", Sonnet labeled "paid", Opus labeled "paid · higher cost"
+- Backend routes to correct provider and model. Gemini uses grounding, Claude uses training knowledge
+- MySQL meals table stores model_used for all 5 options
+- Persistent history page with provider-aware model labels
+- Auth optional — logged-out flow unchanged (Flash only)
+- All new UI uses design tokens
 
 ### Architecture notes for next session:
-- Auth is optional, not gating. Estimation flow and localStorage history work without login
-- PHP sessions started for CSRF. Session 2 piggybacks for auth
-- includes/config.php has gemini_api_key filled in, plus commented-out fields for anthropic_api_key, DB credentials, and app_passphrase
-- api/estimate.php has provider branching: gemini path works, anthropic path needs implementing in Session 2
-- The frontend sends model identifier in the request. Session 2 adds the model toggle UI
-- The frontend sends base64 thumbnail in the payload. Session 2 stores it in DB for logged-in users
-- localStorage history stores model_used per entry
-- localStorage history on index.php should never be removed or replaced
-- Gemini free tier: Flash (10 RPM, 250 RPD), Flash Thinking (same, uses thinkingConfig), Pro (5 RPM, 100 RPD)
-- Claude API (Session 2): Sonnet and Opus via Anthropic API, paid per token, no grounding (uses training knowledge for restaurant lookups)
+- api/estimate.php returns JSON. Session 3 adds usage counts
+- Three counter buckets needed: flash (Flash + Thinking, 250 RPD free), pro (100 RPD free), claude (Sonnet + Opus, paid, no hard limit — track for visibility only)
+- Gemini counters gate requests at limits. Claude counter is informational only (paid API, no daily cap)
+- localStorage and MySQL history independent
+- Frontend sends thumbnail + model in request
 
 ### Known issues or considerations for next session:
-- Flash Thinking and Pro model paths are mapped in estimate.php but the frontend hardcodes "flash" — Session 2 adds the model toggle UI
-- No rate limiting or API usage tracking yet — Session 3 adds the per-provider counter
+- No rate limiting or API usage tracking yet — Session 3 adds per-provider counters with the three buckets above
 - No error retry or user-friendly error messages beyond basic display — Session 3 polishes this
 - localStorage has a ~5MB limit; history is capped at 50 entries with thumbnail cleanup to stay within bounds
+- Flash Thinking thinkingBudget is set to 1024 tokens — may need tuning based on response quality
+- Claude API timeout set to 90s (vs 55s for Gemini) since Opus can be slower
+- No copy-to-clipboard on results yet — Session 3 adds this
+- DB save silently logs errors to error_log rather than failing the request — monitor for issues after deploy
