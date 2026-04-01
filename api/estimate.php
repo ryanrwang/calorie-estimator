@@ -81,6 +81,70 @@ If the image is unclear or you genuinely cannot identify the food, say so and as
 Do not add health advice, dietary recommendations, or commentary unless the user asks.
 PROMPT;
 
+// --- API usage counter ---
+
+$usageFile = __DIR__ . '/../data/api_usage.json';
+
+function read_usage() {
+    global $usageFile;
+    $fp = fopen($usageFile, 'c+');
+    if (!$fp) return ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    flock($fp, LOCK_SH);
+    $contents = stream_get_contents($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+    $data = json_decode($contents, true);
+    if (!$data) return ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    return $data;
+}
+
+function increment_usage($bucket) {
+    global $usageFile;
+    $fp = fopen($usageFile, 'c+');
+    if (!$fp) return ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    flock($fp, LOCK_EX);
+    $contents = stream_get_contents($fp);
+    $data = json_decode($contents, true);
+    if (!$data) $data = ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+
+    // Reset if new day (Pacific time)
+    $today = (new DateTime('now', new DateTimeZone('America/Los_Angeles')))->format('Y-m-d');
+    if (!isset($data['date']) || $data['date'] !== $today) {
+        $data = ['date' => $today, 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    }
+
+    $data[$bucket] = isset($data[$bucket]) ? $data[$bucket] + 1 : 1;
+
+    ftruncate($fp, 0);
+    rewind($fp);
+    fwrite($fp, json_encode($data));
+    fflush($fp);
+    flock($fp, LOCK_UN);
+    fclose($fp);
+    return $data;
+}
+
+function get_usage_for_response() {
+    $data = read_usage();
+    $today = (new DateTime('now', new DateTimeZone('America/Los_Angeles')))->format('Y-m-d');
+    if (!isset($data['date']) || $data['date'] !== $today) {
+        return ['flash' => 0, 'pro' => 0, 'claude' => 0];
+    }
+    return [
+        'flash' => isset($data['flash']) ? (int)$data['flash'] : 0,
+        'pro' => isset($data['pro']) ? (int)$data['pro'] : 0,
+        'claude' => isset($data['claude']) ? (int)$data['claude'] : 0,
+    ];
+}
+
+// Map model to usage bucket
+function get_usage_bucket($modelId) {
+    if ($modelId === 'flash' || $modelId === 'flash-thinking') return 'flash';
+    if ($modelId === 'pro') return 'pro';
+    if ($modelId === 'sonnet' || $modelId === 'opus') return 'claude';
+    return 'flash';
+}
+
 // --- Provider routing ---
 
 // Map model identifiers to providers
@@ -108,6 +172,37 @@ if (isset($geminiModels[$modelId])) {
 if ($provider === 'anthropic' && !is_logged_in()) {
     $modelId = 'flash';
     $provider = 'gemini';
+}
+
+// --- Quota check (Gemini only) ---
+
+$usageBucket = get_usage_bucket($modelId);
+$currentUsage = get_usage_for_response();
+
+if ($provider === 'gemini') {
+    $limits = ['flash' => 250, 'pro' => 100];
+    $limit = isset($limits[$usageBucket]) ? $limits[$usageBucket] : 250;
+    $count = isset($currentUsage[$usageBucket]) ? $currentUsage[$usageBucket] : 0;
+
+    if ($count >= $limit) {
+        // Suggest alternatives
+        $suggestions = [];
+        if ($usageBucket === 'flash' && $currentUsage['pro'] < 100) {
+            $suggestions[] = 'Pro';
+        }
+        if ($usageBucket === 'pro' && $currentUsage['flash'] < 250) {
+            $suggestions[] = 'Flash';
+        }
+        if (is_logged_in()) {
+            $suggestions[] = 'Claude Sonnet or Opus';
+        }
+        $altMsg = count($suggestions) > 0 ? ' Try ' . implode(' or ', $suggestions) . '.' : '';
+        json_response([
+            'error' => 'Quota reached for ' . ($usageBucket === 'flash' ? 'Flash' : 'Pro') . ' — try after midnight PT or switch models.' . $altMsg,
+            'usage' => $currentUsage,
+            'quota_exceeded' => true,
+        ], 429);
+    }
 }
 
 // --- Gemini provider ---
@@ -184,7 +279,10 @@ if ($provider === 'gemini') {
     curl_close($ch);
 
     if ($curlError) {
-        json_error('Failed to connect to Gemini API: ' . $curlError, 502);
+        $msg = strpos($curlError, 'timed out') !== false || strpos($curlError, 'Timeout') !== false
+            ? 'Gemini took too long to respond. Try again or use a faster model.'
+            : 'Failed to connect to Gemini API: ' . $curlError;
+        json_response(['error' => $msg, 'usage' => get_usage_for_response(), 'timeout' => true], 504);
     }
 
     $data = json_decode($response, true);
@@ -194,7 +292,12 @@ if ($provider === 'gemini') {
         if (isset($data['error']['message'])) {
             $errorMsg = $data['error']['message'];
         }
-        json_error($errorMsg, 502);
+        $status = 502;
+        if ($httpCode === 429) {
+            $errorMsg = 'Too many requests — wait a moment and try again.';
+            $status = 429;
+        }
+        json_response(['error' => $errorMsg, 'usage' => get_usage_for_response()], $status);
     }
 
     // Extract text from response
@@ -211,12 +314,14 @@ if ($provider === 'gemini') {
         json_error('Empty response from Gemini', 502);
     }
 
-    // Save to DB if logged in
+    // Increment usage counter and save to DB
+    $updatedUsage = increment_usage($usageBucket);
     save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
     json_response([
         'result' => $resultText,
         'model'  => $modelId,
+        'usage'  => get_usage_for_response(),
     ]);
 }
 
@@ -288,7 +393,10 @@ if ($provider === 'anthropic') {
     curl_close($ch);
 
     if ($curlError) {
-        json_error('Failed to connect to Claude API: ' . $curlError, 502);
+        $msg = strpos($curlError, 'timed out') !== false || strpos($curlError, 'Timeout') !== false
+            ? 'Claude took too long to respond. Try again or use a different model.'
+            : 'Failed to connect to Claude API: ' . $curlError;
+        json_response(['error' => $msg, 'usage' => get_usage_for_response(), 'timeout' => true], 504);
     }
 
     $data = json_decode($response, true);
@@ -298,7 +406,18 @@ if ($provider === 'anthropic') {
         if (isset($data['error']['message'])) {
             $errorMsg = $data['error']['message'];
         }
-        json_error($errorMsg, 502);
+        $status = 502;
+        if ($httpCode === 429) {
+            $errorMsg = 'Claude is rate limited — wait a moment and try again.';
+            $status = 429;
+        } elseif ($httpCode === 529) {
+            $errorMsg = 'Claude is temporarily overloaded — please try again shortly.';
+            $status = 529;
+        } elseif ($httpCode === 401) {
+            $errorMsg = 'Claude API key is invalid. Please contact the admin.';
+            $status = 401;
+        }
+        json_response(['error' => $errorMsg, 'usage' => get_usage_for_response()], $status);
     }
 
     // Extract text from response
@@ -315,12 +434,14 @@ if ($provider === 'anthropic') {
         json_error('Empty response from Claude', 502);
     }
 
-    // Save to DB if logged in
+    // Increment usage counter and save to DB
+    $updatedUsage = increment_usage($usageBucket);
     save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
     json_response([
         'result' => $resultText,
         'model'  => $modelId,
+        'usage'  => get_usage_for_response(),
     ]);
 }
 

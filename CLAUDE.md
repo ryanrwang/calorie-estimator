@@ -35,7 +35,7 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 - Logged-in users get model selection + persistent MySQL history
 - localStorage history and MySQL history are independent and do not sync
 - Thumbnails are ~200px base64 JPEG strings, never full images
-- API usage counter tracks two buckets: flash (250 RPD) and pro (100 RPD)
+- API usage counter tracks three buckets: flash (250 RPD), pro (100 RPD), claude (paid, no limit — informational)
 - Two AI providers: Gemini (free tier, has grounding for restaurant lookups) and Claude (paid, uses training knowledge). Provider routing handled in api/estimate.php
 - Claude Sonnet and Opus are only available to logged-in users
 - CSRF protection on all forms
@@ -108,37 +108,26 @@ If already on `main` with uncommitted changes, commit and push directly — no P
 
 ## Current Session
 
-Session 2 status: COMPLETE
+Status: COMPLETE (all 3 sessions done)
 
-### What was built in Session 1:
-- Core estimation flow, Gemini 2.5 Flash + grounding
-- Provider-based branching in estimate.php (Gemini implemented)
-- Image compression + thumbnails, CSRF, localStorage history (with model_used), design tokens
+### Summary:
+Personal calorie estimation web app. Text or photo → AI estimate for LoseIt logging. Two AI providers: Gemini (Flash/Thinking/Pro with grounding, free tier) and Claude (Sonnet/Opus, paid). Works without account (Flash + localStorage). Passphrase login + username adds persistent history and full model selection.
 
-### What was built in Session 2:
-- Passphrase login with username selection (no per-user passwords)
-- PHP session auth. Users table: id, username, created_at
-- Anthropic API integration: Sonnet and Opus via /v1/messages endpoint
-- 5 model options for logged-in users: Flash, Flash Thinking, Pro (Gemini) + Sonnet, Opus (Claude)
-- Pro labeled "100/day", Sonnet labeled "paid", Opus labeled "paid · higher cost"
-- Backend routes to correct provider and model. Gemini uses grounding, Claude uses training knowledge
-- MySQL meals table stores model_used for all 5 options
-- Persistent history page with provider-aware model labels
-- Auth optional — logged-out flow unchanged (Flash only)
-- All new UI uses design tokens
+### What was built:
+- Session 1: Core flow, Gemini Flash + grounding, provider-based backend architecture, image compression, CSRF, localStorage history
+- Session 2: Passphrase auth, MySQL history, Anthropic API integration, 5-model toggle (3 Gemini + 2 Claude), provider-aware history
+- Session 3: Per-provider API counter, copy to clipboard, loading/error states, mobile polish
 
-### Architecture notes for next session:
-- api/estimate.php returns JSON. Session 3 adds usage counts
-- Three counter buckets needed: flash (Flash + Thinking, 250 RPD free), pro (100 RPD free), claude (Sonnet + Opus, paid, no hard limit — track for visibility only)
-- Gemini counters gate requests at limits. Claude counter is informational only (paid API, no daily cap)
-- localStorage and MySQL history independent
-- Frontend sends thumbnail + model in request
+### API details:
+- Gemini free tier: Flash (10 RPM, 250 RPD), Flash Thinking (same), Pro (5 RPM, 100 RPD), Grounding (500 RPD)
+- Claude paid: Sonnet and Opus via Anthropic API, no daily cap, tracked for visibility
+- All Gemini limits per API key, reset midnight Pacific. Google has changed limits before
+- Claude has no grounding — uses training knowledge for restaurant lookups
 
-### Known issues or considerations for next session:
-- No rate limiting or API usage tracking yet — Session 3 adds per-provider counters with the three buckets above
-- No error retry or user-friendly error messages beyond basic display — Session 3 polishes this
-- localStorage has a ~5MB limit; history is capped at 50 entries with thumbnail cleanup to stay within bounds
+### Known issues:
 - Flash Thinking thinkingBudget is set to 1024 tokens — may need tuning based on response quality
 - Claude API timeout set to 90s (vs 55s for Gemini) since Opus can be slower
-- No copy-to-clipboard on results yet — Session 3 adds this
-- DB save silently logs errors to error_log rather than failing the request — monitor for issues after deploy
+- DB save silently logs errors to error_log rather than failing the request — monitor after deploy
+- Copy-to-clipboard parsing relies on "Item — low–high" format; unusual AI response formats may fall back to raw text copy
+- Gemini rate limits (RPM) are not tracked — only daily quotas (RPD) are enforced. Rapid successive requests could hit RPM limits and get 429s
+- data/api_usage.json uses file locking (flock) which works on single-server Bluehost but would need a different approach for multi-server setups

@@ -5,6 +5,8 @@
 
     var THEME_KEY = 'calorie-estimator-theme';
     var HISTORY_KEY = 'calorie-estimator-history';
+    var MAX_HISTORY = 50;
+    var PRUNE_TARGET = 30;
 
     function getStoredTheme() {
         try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
@@ -64,7 +66,13 @@
                 var dataUrl = canvas.toDataURL('image/jpeg', quality);
                 callback(dataUrl);
             };
+            img.onerror = function () {
+                callback(null);
+            };
             img.src = e.target.result;
+        };
+        reader.onerror = function () {
+            callback(null);
         };
         reader.readAsDataURL(file);
     }
@@ -85,6 +93,100 @@
                 selectedModel = this.getAttribute('data-model');
             });
         }
+    }
+
+    // ── Usage indicator ──
+
+    var usageIndicator = document.getElementById('usage-indicator');
+
+    function updateUsageDisplay(usage) {
+        if (!usageIndicator || !usage) return;
+
+        var bucket = getUsageBucket(selectedModel);
+        var count = usage[bucket] || 0;
+        var html = '';
+
+        if (bucket === 'flash') {
+            var cls = count >= 230 ? ' usage-warn' : '';
+            html = '<span class="usage-text' + cls + '">' + count + '/250 Flash today</span>';
+        } else if (bucket === 'pro') {
+            var cls = count >= 85 ? ' usage-warn' : '';
+            html = '<span class="usage-text' + cls + '">' + count + '/100 Pro today</span>';
+        } else if (bucket === 'claude') {
+            html = '<span class="usage-text">' + count + ' Claude today</span>';
+        }
+
+        usageIndicator.innerHTML = html;
+        usageIndicator.classList.remove('hidden');
+    }
+
+    function getUsageBucket(model) {
+        if (model === 'flash' || model === 'flash-thinking') return 'flash';
+        if (model === 'pro') return 'pro';
+        if (model === 'sonnet' || model === 'opus') return 'claude';
+        return 'flash';
+    }
+
+    // ── Copy to clipboard ──
+
+    var copyBtn = document.getElementById('copy-btn');
+    var copyText = document.getElementById('copy-text');
+    var lastResultText = '';
+
+    function parseMidpointList(text) {
+        // Parse lines like "Chicken breast grilled — 200–280" into "Chicken breast grilled 240 cal"
+        var lines = text.split('\n');
+        var items = [];
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line) continue;
+
+            // Skip total lines, notes, sources, caveats
+            var lowerLine = line.toLowerCase();
+            if (lowerLine.indexOf('total') === 0 || lowerLine.indexOf('note') === 0 ||
+                lowerLine.indexOf('source') === 0 || lowerLine.indexOf('*') === 0 ||
+                lowerLine.indexOf('disclaimer') === 0) continue;
+
+            // Match patterns like: "Item name — 200–300" or "Item name - 200-300"
+            // Also matches "Item name — ~200–300" and "Item name — 200–300 cal"
+            var match = line.match(/^(.+?)\s*[\u2014\u2013\-]+\s*~?(\d+)\s*[\u2013\-]+\s*(\d+)\s*(cal|kcal)?/i);
+            if (match) {
+                var name = match[1].replace(/^[-\u2022\u2013\u2014\*]\s*/, '').trim();
+                var low = parseInt(match[2], 10);
+                var high = parseInt(match[3], 10);
+                var mid = Math.round((low + high) / 2);
+                items.push(name + ' ' + mid + ' cal');
+            }
+        }
+        return items;
+    }
+
+    function copyForLoseIt() {
+        if (!lastResultText) return;
+        var items = parseMidpointList(lastResultText);
+        var copyString = items.length > 0 ? items.join('\n') : lastResultText.trim();
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(copyString).then(function () {
+                showCopyConfirmation();
+            }, function () {
+                showCopyConfirmation();
+            });
+        }
+    }
+
+    function showCopyConfirmation() {
+        if (!copyText) return;
+        copyText.textContent = 'Copied!';
+        copyBtn.classList.add('copy-btn-success');
+        setTimeout(function () {
+            copyText.textContent = 'Copy for LoseIt';
+            copyBtn.classList.remove('copy-btn-success');
+        }, 1500);
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener('click', copyForLoseIt);
     }
 
     // ── Form handling ──
@@ -111,11 +213,16 @@
 
             // Compress for API (1024px)
             compressImage(file, 1024, 0.8, function (apiImage) {
+                if (!apiImage) {
+                    showResults('<p class="error-text">Could not process this image. Try a different photo.</p>', true);
+                    return;
+                }
                 currentApiImage = apiImage;
             });
 
             // Generate thumbnail (200px)
             compressImage(file, 200, 0.6, function (thumb) {
+                if (!thumb) return;
                 currentThumbnail = thumb;
                 photoPreviewImg.src = thumb;
                 photoPreview.classList.remove('hidden');
@@ -141,6 +248,74 @@
         });
     }
 
+    // Track last payload for retry
+    var lastPayload = null;
+
+    function submitEstimate(payload) {
+        lastPayload = payload;
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitText.textContent = 'Estimating...';
+        submitSpinner.classList.remove('hidden');
+        resultsSection.classList.add('hidden');
+        if (copyBtn) copyBtn.classList.add('hidden');
+
+        fetch('api/estimate.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            // Update usage display regardless of success/error
+            if (data.usage) {
+                updateUsageDisplay(data.usage);
+            }
+
+            if (data.error) {
+                var errorHtml = '<p class="error-text">' + escapeHtml(data.error) + '</p>';
+                errorHtml += '<button type="button" class="retry-btn" id="retry-btn">Try Again</button>';
+                showResults(errorHtml, true);
+                var retryBtn = document.getElementById('retry-btn');
+                if (retryBtn) {
+                    retryBtn.addEventListener('click', function () {
+                        submitEstimate(lastPayload);
+                    });
+                }
+            } else {
+                lastResultText = data.result;
+                showResults(formatResponse(data.result), false);
+
+                // Save to localStorage history
+                saveToHistory({
+                    timestamp: new Date().toISOString(),
+                    input_type: currentApiImage ? 'photo' : 'text',
+                    input_text: payload.text || '',
+                    thumbnail: currentThumbnail,
+                    gemini_response: data.result,
+                    model_used: data.model || 'flash',
+                });
+            }
+        })
+        .catch(function (err) {
+            var errorHtml = '<p class="error-text">Connection error. Check your internet and try again.</p>';
+            errorHtml += '<button type="button" class="retry-btn" id="retry-btn">Try Again</button>';
+            showResults(errorHtml, true);
+            var retryBtn = document.getElementById('retry-btn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', function () {
+                    submitEstimate(lastPayload);
+                });
+            }
+        })
+        .finally(function () {
+            submitBtn.disabled = false;
+            submitText.textContent = 'Estimate Calories';
+            submitSpinner.classList.add('hidden');
+        });
+    }
+
     if (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
@@ -154,12 +329,6 @@
             var csrfInput = form.querySelector('input[name="csrf_token"]');
             var csrfToken = csrfInput ? csrfInput.value : '';
 
-            // Show loading state
-            submitBtn.disabled = true;
-            submitText.textContent = 'Estimating...';
-            submitSpinner.classList.remove('hidden');
-            resultsSection.classList.add('hidden');
-
             var payload = {
                 csrf_token: csrfToken,
                 text: text,
@@ -171,54 +340,36 @@
                 payload.thumbnail = currentThumbnail;
             }
 
-            fetch('api/estimate.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-                if (data.error) {
-                    showResults('<p class="error-text">' + escapeHtml(data.error) + '</p>');
-                } else {
-                    showResults(formatResponse(data.result));
-
-                    // Save to localStorage history
-                    saveToHistory({
-                        timestamp: new Date().toISOString(),
-                        input_type: currentApiImage ? 'photo' : 'text',
-                        input_text: text,
-                        thumbnail: currentThumbnail,
-                        gemini_response: data.result,
-                        model_used: data.model || 'flash',
-                    });
-                }
-            })
-            .catch(function (err) {
-                showResults('<p class="error-text">Something went wrong. Please try again.</p>');
-            })
-            .finally(function () {
-                submitBtn.disabled = false;
-                submitText.textContent = 'Estimate Calories';
-                submitSpinner.classList.add('hidden');
-            });
+            submitEstimate(payload);
         });
     }
 
-    function showResults(html) {
+    function showResults(html, isError) {
         resultsContent.innerHTML = html;
         resultsSection.classList.remove('hidden');
+        // Show copy button only on success
+        if (copyBtn) {
+            if (isError) {
+                copyBtn.classList.add('hidden');
+            } else {
+                copyBtn.classList.remove('hidden');
+            }
+        }
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function formatResponse(text) {
-        // Convert plain text response to HTML
         var lines = text.split('\n');
         var html = '';
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (!line) continue;
-            html += '<p class="result-line">' + escapeHtml(line) + '</p>';
+            // Bold total lines
+            if (/^total/i.test(line)) {
+                html += '<p class="result-line result-total">' + escapeHtml(line) + '</p>';
+            } else {
+                html += '<p class="result-line">' + escapeHtml(line) + '</p>';
+            }
         }
         return html;
     }
@@ -243,18 +394,41 @@
     function saveToHistory(entry) {
         var history = getHistory();
         history.unshift(entry);
-        // Keep max 50 entries to avoid localStorage limits
-        if (history.length > 50) {
-            history = history.slice(0, 50);
+
+        // Auto-prune: keep MAX_HISTORY, but if over, trim to PRUNE_TARGET
+        // Strip thumbnails from oldest entries if near capacity
+        if (history.length > MAX_HISTORY) {
+            history = history.slice(0, PRUNE_TARGET);
         }
+
         try {
             localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
         } catch (e) {
-            // localStorage full — remove oldest entries and retry
-            history = history.slice(0, 25);
-            try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e2) { /* give up */ }
+            // localStorage full — strip thumbnails from old entries first
+            for (var i = Math.floor(history.length / 2); i < history.length; i++) {
+                history[i].thumbnail = null;
+            }
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            } catch (e2) {
+                // Still failing — aggressively prune
+                history = history.slice(0, 10);
+                for (var k = 0; k < history.length; k++) {
+                    history[k].thumbnail = null;
+                }
+                try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e3) { /* give up */ }
+            }
         }
         renderHistory();
+    }
+
+    // Auto-prune on page load if history is bloated
+    function pruneHistoryIfNeeded() {
+        var history = getHistory();
+        if (history.length > MAX_HISTORY) {
+            history = history.slice(0, PRUNE_TARGET);
+            try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) { /* noop */ }
+        }
     }
 
     function renderHistory() {
@@ -314,6 +488,7 @@
     }
 
     // Render history on page load
+    pruneHistoryIfNeeded();
     renderHistory();
 
 })();
