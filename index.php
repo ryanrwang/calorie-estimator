@@ -2,6 +2,8 @@
 session_start();
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/mock.php';
+$mockMode = is_mock_mode();
 $csrfToken = csrf_generate();
 $loggedIn = is_logged_in();
 $username = get_current_username();
@@ -216,8 +218,13 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     </dialog>
     <?php endif; ?>
 
+    <?php if ($mockMode): ?>
+    <div class="mock-indicator">MOCK MODE</div>
+    <?php endif; ?>
+
     <script>window.APP_AUTH = <?php echo json_encode($loggedIn); ?>;</script>
     <script>window.APP_CSRF = <?php echo json_encode($csrfToken); ?>;</script>
+    <script>window.APP_MOCK = <?php echo json_encode($mockMode); ?>;</script>
     <script src="tokens.js"></script>
     <script src="app.js"></script>
 </body>

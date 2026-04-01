@@ -2,6 +2,8 @@
 session_start();
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/mock.php';
+$mockMode = is_mock_mode();
 
 // Already logged in? Go home
 if (is_logged_in()) {
@@ -21,12 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = isset($_POST['action']) ? $_POST['action'] : '';
 
         if ($action === 'passphrase') {
-            $input = isset($_POST['passphrase']) ? trim($_POST['passphrase']) : '';
-            if (verify_passphrase($input)) {
+            if ($mockMode) {
+                // Mock mode: skip passphrase verification
                 $_SESSION['passphrase_verified'] = true;
                 $step = 'username';
             } else {
-                $error = 'Incorrect passphrase.';
+                $input = isset($_POST['passphrase']) ? trim($_POST['passphrase']) : '';
+                if (verify_passphrase($input)) {
+                    $_SESSION['passphrase_verified'] = true;
+                    $step = 'username';
+                } else {
+                    $error = 'Incorrect passphrase.';
+                }
             }
         } elseif ($action === 'select_user') {
             if (empty($_SESSION['passphrase_verified'])) {
@@ -59,6 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Username can only contain letters, numbers, hyphens, and underscores.';
                     $step = 'username';
                 } else {
+                    if ($mockMode && !mock_has_db()) {
+                        // No DB: use mock session login
+                        login_user(99999, $username);
+                        unset($_SESSION['passphrase_verified']);
+                        header('Location: index.php');
+                        exit;
+                    }
                     try {
                         $userId = create_user($username);
                         login_user($userId, $username);
@@ -88,7 +103,11 @@ if (!empty($_SESSION['passphrase_verified']) && $step === 'passphrase') {
     $step = 'username';
 }
 
-$users = ($step === 'username') ? get_all_usernames() : [];
+if ($step === 'username' && (!$mockMode || mock_has_db())) {
+    $users = get_all_usernames();
+} else {
+    $users = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -130,7 +149,7 @@ $users = ($step === 'username') ? get_all_usernames() : [];
                         id="passphrase"
                         name="passphrase"
                         class="login-input"
-                        required
+                        <?php echo $mockMode ? '' : 'required'; ?>
                         autofocus
                         autocomplete="off"
                     >
@@ -174,6 +193,10 @@ $users = ($step === 'username') ? get_all_usernames() : [];
             <a href="index.php" class="login-back-link">Back to estimator</a>
         </div>
     </main>
+
+    <?php if ($mockMode): ?>
+    <div class="mock-indicator">MOCK MODE</div>
+    <?php endif; ?>
 
     <script src="tokens.js"></script>
     <script src="app.js"></script>

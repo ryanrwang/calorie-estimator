@@ -678,7 +678,7 @@
 
     function submitPassphrase() {
         var passphrase = loginPassphraseInput ? loginPassphraseInput.value.trim() : '';
-        if (!passphrase) return;
+        if (!passphrase && !window.APP_MOCK) return;
 
         hideLoginError();
         loginPassphraseBtn.disabled = true;

@@ -1038,3 +1038,22 @@ a:hover {
         padding: var(--spacing-sm) var(--spacing-md);
     }
 }
+
+/* ── Mock mode indicator ── */
+
+.mock-indicator {
+    position: fixed;
+    bottom: var(--spacing-sm);
+    right: var(--spacing-sm);
+    background: var(--color-status-warningBg);
+    color: var(--color-status-warningText);
+    font-size: var(--typography-xs-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    z-index: 9999;
+    pointer-events: none;
+    opacity: var(--opacity-muted);
+    letter-spacing: 0.05em;
+    line-height: var(--typography-xs-lineHeight);
+}
