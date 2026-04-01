@@ -6,6 +6,7 @@
 session_start();
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/mock.php';
 
 header('Content-Type: application/json');
 
@@ -32,10 +33,11 @@ if (!csrf_validate($csrfToken)) {
 $action = isset($input['action']) ? $input['action'] : '';
 
 if ($action === 'passphrase') {
+    $mockMode = is_mock_mode();
     $passphrase = isset($input['passphrase']) ? trim($input['passphrase']) : '';
-    if (verify_passphrase($passphrase)) {
+    if ($mockMode || verify_passphrase($passphrase)) {
         $_SESSION['passphrase_verified'] = true;
-        $users = get_all_usernames();
+        $users = ($mockMode && !mock_has_db()) ? [] : get_all_usernames();
         // Regenerate CSRF token
         $_SESSION['csrf_token'] = '';
         $newToken = csrf_generate();
@@ -79,6 +81,12 @@ if ($action === 'create_user') {
     }
     if (!preg_match('/^[a-zA-Z0-9_-]+$/', $username)) {
         echo json_encode(['ok' => false, 'error' => 'Username can only contain letters, numbers, hyphens, and underscores.']);
+        exit;
+    }
+    if (is_mock_mode() && !mock_has_db()) {
+        login_user(99999, $username);
+        unset($_SESSION['passphrase_verified']);
+        echo json_encode(['ok' => true, 'username' => $username]);
         exit;
     }
     try {

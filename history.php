@@ -2,6 +2,8 @@
 session_start();
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/mock.php';
+$mockMode = is_mock_mode();
 
 if (!is_logged_in()) {
     header('Location: login.php');
@@ -181,6 +183,10 @@ $modelProviders = [
             <?php endif; ?>
         <?php endif; ?>
     </main>
+
+    <?php if ($mockMode): ?>
+    <div class="mock-indicator">MOCK MODE</div>
+    <?php endif; ?>
 
     <script src="tokens.js"></script>
     <script src="app.js"></script>

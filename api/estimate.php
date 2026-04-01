@@ -3,6 +3,7 @@ session_start();
 
 require_once __DIR__ . '/../includes/csrf.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/mock.php';
 $config = require __DIR__ . '/../includes/config.php';
 
 // --- JSON response helpers ---
@@ -172,6 +173,26 @@ if (isset($geminiModels[$modelId])) {
 if ($provider === 'anthropic' && !is_logged_in()) {
     $modelId = 'flash';
     $provider = 'gemini';
+}
+
+// --- Mock mode ---
+
+if (is_mock_mode()) {
+    // Simulate API latency
+    usleep(rand(500, 1500) * 1000);
+
+    $resultText = mock_generate_response($inputText, $modelId);
+
+    // Still save to DB if logged in and DB is available
+    if (is_logged_in() && mock_has_db()) {
+        save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+    }
+
+    json_response([
+        'result' => $resultText,
+        'model'  => $modelId,
+        'usage'  => ['flash' => 0, 'pro' => 0, 'claude' => 0],
+    ]);
 }
 
 // --- Quota check (Gemini only) ---
