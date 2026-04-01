@@ -15,14 +15,13 @@
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* noop */ }
+        updateThemeIcon();
     }
 
     function initTheme() {
         var stored = getStoredTheme();
         if (stored === 'dark' || stored === 'light') {
             setTheme(stored);
-        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            setTheme('dark');
         } else {
             setTheme('light');
         }
@@ -33,12 +32,70 @@
         setTheme(current === 'dark' ? 'light' : 'dark');
     }
 
+    function updateThemeIcon() {
+        var icon = document.querySelector('.theme-icon');
+        if (!icon) return;
+        var theme = document.documentElement.getAttribute('data-theme');
+        icon.textContent = theme === 'dark' ? 'dark_mode' : 'light_mode';
+    }
+
     initTheme();
 
     var themeBtn = document.getElementById('theme-toggle');
     if (themeBtn) {
         themeBtn.addEventListener('click', toggleTheme);
     }
+
+    // ── Profile dropdown ──
+
+    var profileBtn = document.getElementById('profile-btn');
+    var profileMenu = document.getElementById('profile-menu');
+
+    if (profileBtn && profileMenu) {
+        profileBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            profileMenu.classList.toggle('hidden');
+        });
+    }
+
+    // ── Model dropdown ──
+
+    var selectedModel = 'flash';
+    var modelSelectTrigger = document.getElementById('model-select-trigger');
+    var modelDropdown = document.getElementById('model-dropdown');
+    var modelSelectLabel = document.getElementById('model-select-label');
+
+    if (modelSelectTrigger && modelDropdown) {
+        modelSelectTrigger.addEventListener('click', function (e) {
+            e.stopPropagation();
+            modelDropdown.classList.toggle('hidden');
+            // Close profile menu if open
+            if (profileMenu) profileMenu.classList.add('hidden');
+        });
+
+        var modelOptions = modelDropdown.querySelectorAll('.model-option');
+        for (var i = 0; i < modelOptions.length; i++) {
+            modelOptions[i].addEventListener('click', function () {
+                for (var j = 0; j < modelOptions.length; j++) {
+                    modelOptions[j].classList.remove('active');
+                }
+                this.classList.add('active');
+                selectedModel = this.getAttribute('data-model');
+
+                // Update label — use the text content minus the note
+                var labelText = this.childNodes[0].textContent.trim();
+                if (modelSelectLabel) modelSelectLabel.textContent = labelText;
+
+                modelDropdown.classList.add('hidden');
+            });
+        }
+    }
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', function () {
+        if (profileMenu) profileMenu.classList.add('hidden');
+        if (modelDropdown) modelDropdown.classList.add('hidden');
+    });
 
     // ── Image compression ──
 
@@ -75,24 +132,6 @@
             callback(null);
         };
         reader.readAsDataURL(file);
-    }
-
-    // ── Model toggle ──
-
-    var selectedModel = 'flash';
-    var modelToggle = document.getElementById('model-toggle');
-
-    if (modelToggle) {
-        var pills = modelToggle.querySelectorAll('.model-pill');
-        for (var i = 0; i < pills.length; i++) {
-            pills[i].addEventListener('click', function () {
-                for (var j = 0; j < pills.length; j++) {
-                    pills[j].classList.remove('active');
-                }
-                this.classList.add('active');
-                selectedModel = this.getAttribute('data-model');
-            });
-        }
     }
 
     // ── Usage indicator ──
@@ -134,21 +173,17 @@
     var lastResultText = '';
 
     function parseMidpointList(text) {
-        // Parse lines like "Chicken breast grilled — 200–280" into "Chicken breast grilled 240 cal"
         var lines = text.split('\n');
         var items = [];
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (!line) continue;
 
-            // Skip total lines, notes, sources, caveats
             var lowerLine = line.toLowerCase();
             if (lowerLine.indexOf('total') === 0 || lowerLine.indexOf('note') === 0 ||
                 lowerLine.indexOf('source') === 0 || lowerLine.indexOf('*') === 0 ||
                 lowerLine.indexOf('disclaimer') === 0) continue;
 
-            // Match patterns like: "Item name — 200–300" or "Item name - 200-300"
-            // Also matches "Item name — ~200–300" and "Item name — 200–300 cal"
             var match = line.match(/^(.+?)\s*[\u2014\u2013\-]+\s*~?(\d+)\s*[\u2013\-]+\s*(\d+)\s*(cal|kcal)?/i);
             if (match) {
                 var name = match[1].replace(/^[-\u2022\u2013\u2014\*]\s*/, '').trim();
@@ -176,12 +211,12 @@
     }
 
     function showCopyConfirmation() {
-        if (!copyText) return;
+        if (!copyText || !copyBtn) return;
         copyText.textContent = 'Copied!';
-        copyBtn.classList.add('copy-btn-success');
+        copyBtn.classList.add('action-btn-success');
         setTimeout(function () {
             copyText.textContent = 'Copy for LoseIt';
-            copyBtn.classList.remove('copy-btn-success');
+            copyBtn.classList.remove('action-btn-success');
         }, 1500);
     }
 
@@ -202,16 +237,18 @@
     var submitSpinner = document.getElementById('submit-spinner');
     var resultsSection = document.getElementById('results');
     var resultsContent = document.getElementById('results-content');
+    var inputCard = document.getElementById('input-card');
+    var loadingState = document.getElementById('loading-state');
+    var newEstimateBtn = document.getElementById('new-estimate-btn');
 
-    var currentApiImage = null;   // base64 at 1024px for API
-    var currentThumbnail = null;  // base64 at 200px for history
+    var currentApiImage = null;
+    var currentThumbnail = null;
 
     if (photoInput) {
         photoInput.addEventListener('change', function () {
             var file = photoInput.files[0];
             if (!file) return;
 
-            // Compress for API (1024px)
             compressImage(file, 1024, 0.8, function (apiImage) {
                 if (!apiImage) {
                     showResults('<p class="error-text">Could not process this image. Try a different photo.</p>', true);
@@ -220,7 +257,6 @@
                 currentApiImage = apiImage;
             });
 
-            // Generate thumbnail (200px)
             compressImage(file, 200, 0.6, function (thumb) {
                 if (!thumb) return;
                 currentThumbnail = thumb;
@@ -240,26 +276,43 @@
         });
     }
 
-    // Auto-resize textarea
+    // Auto-resize textarea with smooth transition
     if (foodInput) {
         foodInput.addEventListener('input', function () {
             this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
+            this.style.height = Math.max(80, this.scrollHeight) + 'px';
         });
     }
 
     // Track last payload for retry
     var lastPayload = null;
 
+    function collapseInput() {
+        if (!inputCard) return;
+        // Set explicit max-height before collapsing for smooth transition
+        inputCard.style.maxHeight = inputCard.scrollHeight + 'px';
+        // Force reflow
+        inputCard.offsetHeight;
+        inputCard.classList.add('collapsed');
+    }
+
+    function expandInput() {
+        if (!inputCard) return;
+        inputCard.classList.remove('collapsed');
+        inputCard.style.maxHeight = '';
+    }
+
     function submitEstimate(payload) {
         lastPayload = payload;
 
-        // Show loading state
+        // Collapse input, show loading
+        collapseInput();
+        if (loadingState) loadingState.classList.remove('hidden');
+        resultsSection.classList.add('hidden');
+
         submitBtn.disabled = true;
         submitText.textContent = 'Estimating...';
         submitSpinner.classList.remove('hidden');
-        resultsSection.classList.add('hidden');
-        if (copyBtn) copyBtn.classList.add('hidden');
 
         fetch('api/estimate.php', {
             method: 'POST',
@@ -268,7 +321,6 @@
         })
         .then(function (res) { return res.json(); })
         .then(function (data) {
-            // Update usage display regardless of success/error
             if (data.usage) {
                 updateUsageDisplay(data.usage);
             }
@@ -287,7 +339,6 @@
                 lastResultText = data.result;
                 showResults(formatResponse(data.result), false);
 
-                // Save to localStorage history
                 saveToHistory({
                     timestamp: new Date().toISOString(),
                     input_type: currentApiImage ? 'photo' : 'text',
@@ -296,6 +347,9 @@
                     gemini_response: data.result,
                     model_used: data.model || 'flash',
                 });
+
+                // Auto-collapse history when results arrive
+                collapseHistory();
             }
         })
         .catch(function (err) {
@@ -310,8 +364,9 @@
             }
         })
         .finally(function () {
+            if (loadingState) loadingState.classList.add('hidden');
             submitBtn.disabled = false;
-            submitText.textContent = 'Estimate Calories';
+            submitText.textContent = 'Estimate';
             submitSpinner.classList.add('hidden');
         });
     }
@@ -347,7 +402,6 @@
     function showResults(html, isError) {
         resultsContent.innerHTML = html;
         resultsSection.classList.remove('hidden');
-        // Show copy button only on success
         if (copyBtn) {
             if (isError) {
                 copyBtn.classList.add('hidden');
@@ -358,13 +412,42 @@
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
+    // ── New estimate button ──
+
+    if (newEstimateBtn) {
+        newEstimateBtn.addEventListener('click', function () {
+            expandInput();
+            resultsSection.classList.add('hidden');
+            if (loadingState) loadingState.classList.add('hidden');
+
+            // Clear inputs
+            if (foodInput) {
+                foodInput.value = '';
+                foodInput.style.height = '';
+            }
+            currentApiImage = null;
+            currentThumbnail = null;
+            if (photoInput) photoInput.value = '';
+            if (photoPreview) photoPreview.classList.add('hidden');
+            if (photoPreviewImg) photoPreviewImg.src = '';
+            lastResultText = '';
+
+            // Focus textarea
+            if (foodInput) {
+                setTimeout(function () { foodInput.focus(); }, 100);
+            }
+
+            // Re-expand history
+            expandHistory();
+        });
+    }
+
     function formatResponse(text) {
         var lines = text.split('\n');
         var html = '';
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (!line) continue;
-            // Bold total lines
             if (/^total/i.test(line)) {
                 html += '<p class="result-line result-total">' + escapeHtml(line) + '</p>';
             } else {
@@ -379,6 +462,38 @@
         div.textContent = str;
         return div.innerHTML;
     }
+
+    // ── History toggle ──
+
+    var historyToggle = document.getElementById('history-toggle');
+    var historyCollapsible = document.getElementById('history-collapsible');
+    var historySection = document.getElementById('history');
+
+    function collapseHistory() {
+        if (historyCollapsible) historyCollapsible.classList.remove('expanded');
+        if (historySection) historySection.classList.remove('expanded');
+    }
+
+    function expandHistory() {
+        if (historyCollapsible) historyCollapsible.classList.add('expanded');
+        if (historySection) historySection.classList.add('expanded');
+    }
+
+    function toggleHistory() {
+        if (historyCollapsible) historyCollapsible.classList.toggle('expanded');
+        if (historySection) historySection.classList.toggle('expanded');
+    }
+
+    if (historyToggle) {
+        historyToggle.addEventListener('click', function (e) {
+            // Don't toggle if clicking the clear button
+            if (e.target.closest('#clear-history')) return;
+            toggleHistory();
+        });
+    }
+
+    // Start history expanded
+    if (historySection) historySection.classList.add('expanded');
 
     // ── localStorage history ──
 
@@ -395,8 +510,6 @@
         var history = getHistory();
         history.unshift(entry);
 
-        // Auto-prune: keep MAX_HISTORY, but if over, trim to PRUNE_TARGET
-        // Strip thumbnails from oldest entries if near capacity
         if (history.length > MAX_HISTORY) {
             history = history.slice(0, PRUNE_TARGET);
         }
@@ -404,14 +517,12 @@
         try {
             localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
         } catch (e) {
-            // localStorage full — strip thumbnails from old entries first
             for (var i = Math.floor(history.length / 2); i < history.length; i++) {
                 history[i].thumbnail = null;
             }
             try {
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
             } catch (e2) {
-                // Still failing — aggressively prune
                 history = history.slice(0, 10);
                 for (var k = 0; k < history.length; k++) {
                     history[k].thumbnail = null;
@@ -422,7 +533,6 @@
         renderHistory();
     }
 
-    // Auto-prune on page load if history is bloated
     function pruneHistoryIfNeeded() {
         var history = getHistory();
         if (history.length > MAX_HISTORY) {
@@ -439,11 +549,13 @@
         var history = getHistory();
 
         if (history.length === 0) {
-            historyList.innerHTML = '<p class="history-empty">No estimates yet.</p>';
+            historyList.innerHTML = '';
             if (clearBtn) clearBtn.classList.add('hidden');
+            if (historySection) historySection.classList.add('hidden');
             return;
         }
 
+        if (historySection) historySection.classList.remove('hidden');
         if (clearBtn) clearBtn.classList.remove('hidden');
 
         var html = '';
@@ -479,7 +591,8 @@
 
     var clearHistoryBtn = document.getElementById('clear-history');
     if (clearHistoryBtn) {
-        clearHistoryBtn.addEventListener('click', function () {
+        clearHistoryBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
             if (confirm('Clear all history?')) {
                 try { localStorage.removeItem(HISTORY_KEY); } catch (e) { /* noop */ }
                 renderHistory();
@@ -490,5 +603,193 @@
     // Render history on page load
     pruneHistoryIfNeeded();
     renderHistory();
+
+    // ── Login dialog ──
+
+    var loginDialog = document.getElementById('login-dialog');
+    var loginOpenBtn = document.getElementById('login-open-btn');
+    var loginCloseBtn = document.getElementById('login-close-btn');
+    var loginError = document.getElementById('login-error');
+    var loginStepPassphrase = document.getElementById('login-step-passphrase');
+    var loginStepUsername = document.getElementById('login-step-username');
+    var loginPassphraseInput = document.getElementById('login-passphrase');
+    var loginPassphraseBtn = document.getElementById('login-passphrase-btn');
+    var loginUserList = document.getElementById('login-user-list');
+    var loginDivider = document.getElementById('login-divider');
+    var loginNewUsername = document.getElementById('login-new-username');
+    var loginCreateBtn = document.getElementById('login-create-btn');
+
+    var loginCsrf = window.APP_CSRF || '';
+
+    function showLoginError(msg) {
+        if (!loginError) return;
+        loginError.textContent = msg;
+        loginError.classList.remove('hidden');
+    }
+
+    function hideLoginError() {
+        if (!loginError) return;
+        loginError.textContent = '';
+        loginError.classList.add('hidden');
+    }
+
+    if (loginOpenBtn && loginDialog) {
+        loginOpenBtn.addEventListener('click', function () {
+            hideLoginError();
+            loginDialog.showModal();
+            if (loginPassphraseInput) loginPassphraseInput.focus();
+        });
+    }
+
+    if (loginCloseBtn && loginDialog) {
+        loginCloseBtn.addEventListener('click', function () {
+            loginDialog.close();
+        });
+    }
+
+    // Close on backdrop click
+    if (loginDialog) {
+        loginDialog.addEventListener('click', function (e) {
+            if (e.target === loginDialog) loginDialog.close();
+        });
+    }
+
+    // Toggle passphrase visibility
+    var loginTogglePass = document.getElementById('login-toggle-pass');
+    var loginTogglePassIcon = document.getElementById('login-toggle-pass-icon');
+    if (loginTogglePass && loginPassphraseInput) {
+        loginTogglePass.addEventListener('click', function () {
+            var isPassword = loginPassphraseInput.type === 'password';
+            loginPassphraseInput.type = isPassword ? 'text' : 'password';
+            if (loginTogglePassIcon) loginTogglePassIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+            loginPassphraseInput.focus();
+        });
+    }
+
+    // Step 1: Verify passphrase
+    if (loginPassphraseBtn) {
+        loginPassphraseBtn.addEventListener('click', submitPassphrase);
+    }
+    if (loginPassphraseInput) {
+        loginPassphraseInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') submitPassphrase();
+        });
+    }
+
+    function submitPassphrase() {
+        var passphrase = loginPassphraseInput ? loginPassphraseInput.value.trim() : '';
+        if (!passphrase) return;
+
+        hideLoginError();
+        loginPassphraseBtn.disabled = true;
+        loginPassphraseBtn.textContent = 'Verifying...';
+
+        fetch('api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'passphrase', passphrase: passphrase, csrf_token: loginCsrf }),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                if (data.csrf_token) loginCsrf = data.csrf_token;
+                showUsernameStep(data.users || []);
+            } else {
+                showLoginError(data.error || 'Incorrect passphrase.');
+            }
+        })
+        .catch(function () {
+            showLoginError('Connection error. Please try again.');
+        })
+        .finally(function () {
+            loginPassphraseBtn.disabled = false;
+            loginPassphraseBtn.textContent = 'Continue';
+        });
+    }
+
+    function showUsernameStep(users) {
+        if (loginStepPassphrase) loginStepPassphrase.classList.add('hidden');
+        if (loginStepUsername) loginStepUsername.classList.remove('hidden');
+
+        if (loginUserList && users.length > 0) {
+            var html = '';
+            for (var i = 0; i < users.length; i++) {
+                html += '<button type="button" class="login-user-btn" data-user-id="' + users[i].id + '">' +
+                    escapeHtml(users[i].username) + '</button>';
+            }
+            loginUserList.innerHTML = html;
+            if (loginDivider) loginDivider.classList.remove('hidden');
+
+            var userBtns = loginUserList.querySelectorAll('.login-user-btn');
+            for (var j = 0; j < userBtns.length; j++) {
+                userBtns[j].addEventListener('click', function () {
+                    selectUser(parseInt(this.getAttribute('data-user-id'), 10));
+                });
+            }
+        } else {
+            if (loginUserList) loginUserList.innerHTML = '';
+            if (loginDivider) loginDivider.classList.add('hidden');
+            if (loginNewUsername) loginNewUsername.focus();
+        }
+    }
+
+    function selectUser(userId) {
+        hideLoginError();
+        fetch('api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'select_user', user_id: userId, csrf_token: loginCsrf }),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                window.location.reload();
+            } else {
+                showLoginError(data.error || 'Could not log in.');
+            }
+        })
+        .catch(function () {
+            showLoginError('Connection error. Please try again.');
+        });
+    }
+
+    if (loginCreateBtn) {
+        loginCreateBtn.addEventListener('click', createUser);
+    }
+    if (loginNewUsername) {
+        loginNewUsername.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') createUser();
+        });
+    }
+
+    function createUser() {
+        var username = loginNewUsername ? loginNewUsername.value.trim() : '';
+        if (!username) return;
+
+        hideLoginError();
+        loginCreateBtn.disabled = true;
+        loginCreateBtn.textContent = 'Creating...';
+
+        fetch('api/login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'create_user', username: username, csrf_token: loginCsrf }),
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                window.location.reload();
+            } else {
+                showLoginError(data.error || 'Could not create user.');
+            }
+        })
+        .catch(function () {
+            showLoginError('Connection error. Please try again.');
+        })
+        .finally(function () {
+            loginCreateBtn.disabled = false;
+            loginCreateBtn.textContent = 'Create & Log In';
+        });
+    }
 
 })();
