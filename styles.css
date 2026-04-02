@@ -1883,7 +1883,7 @@ a:hover {
 /* ── Mobile ── */
 @media (max-width: 480px) {
     .app-main {
-        padding: 0 var(--spacing-sm) var(--spacing-lg);
+        padding: 0 var(--spacing-md) var(--spacing-lg);
     }
 
     .page-hero {
