@@ -95,23 +95,15 @@
         });
     }
 
-    // Debug mode toggle in settings menu
+    // Debug mode toggle in settings menu — enables/disables mock mode
     var settingsDebugToggle = document.getElementById('settings-debug-toggle');
     if (settingsDebugToggle) {
-        var debugActive = false;
-        try { debugActive = localStorage.getItem('debugMode') === 'true'; } catch (e) { /* noop */ }
-        if (debugActive) {
-            document.body.classList.add('debug');
+        if (window.APP_MOCK) {
             settingsDebugToggle.classList.add('active');
-            window.DEBUG = true;
         }
         settingsDebugToggle.addEventListener('click', function (e) {
             e.stopPropagation();
-            debugActive = !debugActive;
-            document.body.classList.toggle('debug', debugActive);
-            this.classList.toggle('active', debugActive);
-            window.DEBUG = debugActive;
-            try { localStorage.setItem('debugMode', debugActive ? 'true' : 'false'); } catch (e) { /* noop */ }
+            window.location.href = window.APP_MOCK ? 'index.php?mock=0' : 'index.php?mock=1';
         });
     }
 
@@ -408,6 +400,12 @@
         isCompactClickable = false;
 
         var startHeight = inputCard.offsetHeight;
+
+        // Populate the compact text overlay with the first line of input
+        var overlay = document.getElementById('compact-text-overlay');
+        if (overlay && foodInput) {
+            overlay.textContent = foodInput.value.replace(/\n/g, ' ');
+        }
 
         // Apply compact layout. The class change is instant, but the
         // Web Animations API first keyframe (startHeight) overrides

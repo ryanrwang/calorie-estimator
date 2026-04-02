@@ -330,7 +330,7 @@ a:hover {
 }
 
 .input-card.compact {
-    cursor: pointer;
+    cursor: default;
     position: relative;
     box-shadow: none;
 }
@@ -344,12 +344,31 @@ a:hover {
     min-height: 0;
     height: 59px !important;
     padding: var(--spacing-md) 80px var(--spacing-md) var(--spacing-md);
+    overflow: hidden;
+    pointer-events: none;
+    color: transparent;
+}
+
+.compact-text-overlay {
+    display: none;
+}
+
+.input-card.compact .compact-text-overlay {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 80px;
+    height: 100%;
+    padding: var(--spacing-md);
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-md);
+    line-height: 1.5;
+    color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    cursor: pointer;
     pointer-events: none;
-    color: var(--color-text-secondary);
 }
 
 .input-card.compact .photo-preview,
