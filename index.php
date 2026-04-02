@@ -101,8 +101,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         </svg>
                         <span class="usage-ring-tooltip" id="compact-usage-tooltip"></span>
                     </div>
-                    <button type="button" class="compact-edit-btn" aria-label="Edit search" data-tooltip="Edit">
-                        <span class="material-symbols-outlined">edit</span>
+                    <button type="button" class="compact-clear-btn" aria-label="Restart" data-tooltip="Restart">
+                        <span class="material-symbols-outlined">restart_alt</span>
                     </button>
                 </div>
 

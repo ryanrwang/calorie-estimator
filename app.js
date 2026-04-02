@@ -180,6 +180,7 @@
         usageRingFill.style.strokeDashoffset = RING_CIRCUMFERENCE;
     }
     if (usageRingTooltip) usageRingTooltip.textContent = 'Usage';
+    if (compactUsageTooltip) compactUsageTooltip.textContent = 'Usage';
 
     function applyRingState(wrap, fill, tooltip, count, limit, label, fraction) {
         if (tooltip) tooltip.textContent = label;
@@ -411,6 +412,7 @@
         // Web Animations API first keyframe (startHeight) overrides
         // the rendered height on the same frame — no visible jump.
         inputCard.classList.add('compact');
+        inputCard.setAttribute('data-tooltip', 'Edit prompt');
         if (foodInput) foodInput.setAttribute('readonly', '');
 
         var endHeight = inputCard.offsetHeight;
@@ -424,6 +426,7 @@
         var startHeight = inputCard.offsetHeight;
 
         inputCard.classList.remove('compact');
+        inputCard.removeAttribute('data-tooltip');
         if (foodInput) foodInput.removeAttribute('readonly');
 
         var endHeight = inputCard.offsetHeight;

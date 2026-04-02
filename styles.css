@@ -379,18 +379,26 @@ a:hover {
 .input-card.compact .compact-actions {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: 12px;
     position: absolute;
     right: var(--spacing-sm);
     top: 50%;
     transform: translateY(-50%);
 }
 
+.input-card.compact .compact-actions .usage-ring-wrap {
+    display: flex !important;
+}
+
+.input-card.compact:has(.compact-actions:hover)::after {
+    opacity: 0 !important;
+}
+
 .compact-actions {
     display: none;
 }
 
-.compact-edit-btn {
+.compact-clear-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -399,21 +407,20 @@ a:hover {
     padding: 0;
     border: none;
     border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-tertiary);
+    background: var(--color-action-primary);
+    color: var(--color-action-primaryText);
     cursor: pointer;
-    transition: background-color var(--transition-fast),
-                color var(--transition-fast);
+    transition: background-color var(--transition-fast);
 }
 
-.compact-edit-btn:hover {
-    background-color: var(--color-interactive-hover);
-    color: var(--color-text-secondary);
+.compact-clear-btn:hover {
+    background-color: var(--color-action-primaryHover);
 }
 
-.compact-edit-btn .material-symbols-outlined {
-    font-size: 22px;
+.compact-clear-btn .material-symbols-outlined {
+    font-size: 20px;
 }
+
 
 /* ── Food input (textarea) ── */
 .food-input {
