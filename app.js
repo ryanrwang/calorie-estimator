@@ -344,9 +344,9 @@
             }
         });
 
-        // Shift+Enter to submit
+        // Enter to submit, Shift+Enter for new line
         foodInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && e.shiftKey) {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 if (submitBtn && !submitBtn.disabled) {
                     submitBtn.click();
@@ -354,20 +354,6 @@
             }
         });
     }
-
-    // Show Shift+Enter tooltip on submit button while Shift is held
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Shift' && foodInput && foodInput === document.activeElement && submitBtn) {
-            submitBtn.setAttribute('data-tooltip', 'Shift + Enter');
-            submitBtn.classList.add('tooltip-visible');
-        }
-    });
-    document.addEventListener('keyup', function (e) {
-        if (e.key === 'Shift' && submitBtn) {
-            submitBtn.classList.remove('tooltip-visible');
-            submitBtn.removeAttribute('data-tooltip');
-        }
-    });
 
     // Track last payload for retry
     var lastPayload = null;
