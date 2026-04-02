@@ -210,6 +210,7 @@
                 },
                 interactive: {
                     hover:     '#FFF5EB',
+                    hoverStrong: primitives.color.orange[100],
                     active:    '#FFEDD5',
                     selected:  primitives.color.orange[50],
                 },
@@ -268,6 +269,7 @@
                 },
                 interactive: {
                     hover:     primitives.color.gray[700],
+                    hoverStrong: primitives.color.gray[600],
                     active:    primitives.color.gray[600],
                     selected:  primitives.color.orange[950],
                 },
