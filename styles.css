@@ -449,8 +449,10 @@ a:hover {
 /* ── Photo preview (inside card) ── */
 .photo-preview {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
     margin: 0 var(--spacing-md) var(--spacing-sm);
+    width: 80px;
+    height: 80px;
 }
 
 .photo-preview-img {

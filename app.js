@@ -292,25 +292,42 @@
     var currentApiImage = null;
     var currentThumbnail = null;
 
+    function handleImageFile(file) {
+        compressImage(file, 1024, 0.8, function (apiImage) {
+            if (!apiImage) {
+                showResults('<p class="error-text">Could not process this image. Try a different photo.</p>', true);
+                return;
+            }
+            currentApiImage = apiImage;
+        });
+
+        compressImage(file, 200, 0.6, function (thumb) {
+            if (!thumb) return;
+            currentThumbnail = thumb;
+            photoPreviewImg.src = thumb;
+            photoPreview.classList.remove('hidden');
+        });
+    }
+
     if (photoInput) {
         photoInput.addEventListener('change', function () {
             var file = photoInput.files[0];
             if (!file) return;
+            handleImageFile(file);
+        });
+    }
 
-            compressImage(file, 1024, 0.8, function (apiImage) {
-                if (!apiImage) {
-                    showResults('<p class="error-text">Could not process this image. Try a different photo.</p>', true);
+    if (foodInput) {
+        foodInput.addEventListener('paste', function (e) {
+            var items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image/') === 0) {
+                    e.preventDefault();
+                    handleImageFile(items[i].getAsFile());
                     return;
                 }
-                currentApiImage = apiImage;
-            });
-
-            compressImage(file, 200, 0.6, function (thumb) {
-                if (!thumb) return;
-                currentThumbnail = thumb;
-                photoPreviewImg.src = thumb;
-                photoPreview.classList.remove('hidden');
-            });
+            }
         });
     }
 
