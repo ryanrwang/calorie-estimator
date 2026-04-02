@@ -91,13 +91,24 @@
         }
     }
 
+    // ── Settings dropdown ──
+
+    var settingsBtn = document.getElementById('settings-btn');
+    var settingsMenu = document.getElementById('settings-menu');
+
+    if (settingsBtn && settingsMenu) {
+        settingsBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            settingsMenu.classList.toggle('hidden');
+            if (profileMenu) profileMenu.classList.add('hidden');
+        });
+    }
+
     // Close dropdowns on outside click
     document.addEventListener('click', function () {
         if (profileMenu) profileMenu.classList.add('hidden');
         if (modelDropdown) modelDropdown.classList.add('hidden');
-        // Close history overflow menu
-        var hom = document.getElementById('history-overflow-menu');
-        if (hom) hom.classList.add('hidden');
+        if (settingsMenu) settingsMenu.classList.add('hidden');
     });
 
     // ── Image compression ──
@@ -289,10 +300,28 @@
     }
 
     // Auto-resize textarea with smooth transition
+    var typingTimer = null;
     if (foodInput) {
         foodInput.addEventListener('input', function () {
             this.style.height = 'auto';
             this.style.height = Math.max(80, this.scrollHeight) + 'px';
+
+            // Typing glow pulse
+            if (inputCard && !inputCard.classList.contains('compact')) {
+                inputCard.classList.remove('typing-fade');
+                // Re-trigger animation by removing and re-adding class
+                inputCard.classList.remove('typing');
+                void inputCard.offsetWidth; // force reflow to restart animation
+                inputCard.classList.add('typing');
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(function () {
+                    inputCard.classList.remove('typing');
+                    inputCard.classList.add('typing-fade');
+                    setTimeout(function () {
+                        inputCard.classList.remove('typing-fade');
+                    }, 500);
+                }, 600);
+            }
         });
     }
 
@@ -301,21 +330,26 @@
 
     var compactActions = document.getElementById('compact-actions');
 
-    var ANIM_DURATION = 250;
-    var ANIM_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+    var MORPH_DURATION = 800;
+    var ANIM_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
     function animateCardHeight(fromHeight, toHeight) {
         inputCard.classList.add('animating');
+        var dur = Math.round(MORPH_DURATION * 0.5);
         var anim = inputCard.animate([
             { height: fromHeight + 'px' },
             { height: toHeight + 'px' }
         ], {
-            duration: ANIM_DURATION,
+            duration: dur,
             easing: ANIM_EASING,
         });
-        anim.onfinish = function () {
+        var cleanup = function () {
             inputCard.classList.remove('animating');
         };
+        anim.onfinish = cleanup;
+        anim.oncancel = cleanup;
+        // Safety fallback
+        setTimeout(cleanup, dur + 50);
     }
 
     function compactInput() {
@@ -324,6 +358,9 @@
 
         var startHeight = inputCard.offsetHeight;
 
+        // Apply compact layout. The class change is instant, but the
+        // Web Animations API first keyframe (startHeight) overrides
+        // the rendered height on the same frame — no visible jump.
         inputCard.classList.add('compact');
         if (foodInput) foodInput.setAttribute('readonly', '');
 
@@ -344,21 +381,110 @@
         animateCardHeight(startHeight, endHeight);
     }
 
-    function submitEstimate(payload) {
-        lastPayload = payload;
+    // Tracked-treads shift: animate the ENTIRE history list container as one unit.
+    // The list starts shifted up by one card slot, then glides down — like a
+    // conveyor belt or tank treads. The newest card fades in as it enters view.
+    //
+    // This avoids all per-card FLIP/transition bugs because there's only ONE
+    // animation on ONE element (the container).
+    function shiftHistoryDown() {
+        var historyList = document.getElementById('history-list');
+        if (!historyList) return;
 
-        // Compact input, show loading inside results container
+        var dur = Math.round(MORPH_DURATION * 0.65); // ~520ms — slow enough to read
+        var easing = 'cubic-bezier(0.22, 1, 0.36, 1)'; // slight overshoot for physical feel
+
+        var firstEntry = historyList.querySelector('.history-entry');
+        if (!firstEntry) return;
+
+        // One slot = card height + flex gap
+        var slotHeight = firstEntry.offsetHeight + 8;
+
+        // Clip overflow so cards sliding from above are hidden until in-bounds
+        historyList.style.overflow = 'clip';
+
+        // Animate the whole list sliding down from one slot above
+        var listAnim = historyList.animate([
+            { transform: 'translateY(' + (-slotHeight) + 'px)' },
+            { transform: 'translateY(0)' }
+        ], { duration: dur, easing: easing });
+
+        listAnim.onfinish = function () {
+            historyList.style.overflow = '';
+        };
+
+        // Newest card fades in as it slides into view
+        firstEntry.animate([
+            { opacity: 0 },
+            { opacity: 1 }
+        ], { duration: Math.round(dur * 0.7), easing: 'ease-out' });
+    }
+
+    // First-submit nudge: same container animation, smaller displacement.
+    function nudgeHistoryDown() {
+        var historyList = document.getElementById('history-list');
+        if (!historyList) return;
+        var entries = historyList.querySelectorAll(':scope > .history-entry:not(.morph-target)');
+        if (entries.length === 0) return;
+
+        var dur = Math.round(MORPH_DURATION * 0.35);
+        var easing = 'cubic-bezier(0.0, 0, 0.2, 1)';
+
+        // Subtle downward nudge for existing cards
+        for (var i = 0; i < Math.min(entries.length, 8); i++) {
+            entries[i].animate([
+                { transform: 'translateY(-20px)', opacity: 0.5 },
+                { transform: 'translateY(0)', opacity: 1 }
+            ], { duration: dur, easing: easing });
+        }
+    }
+
+    var loadingGrowAnim = null;
+
+    function beginLoading() {
         clearResultsAnimation();
-        compactInput();
         resultsContent.innerHTML = '';
         if (calorieHero) calorieHero.classList.add('hidden');
         if (resultsBeard) resultsBeard.classList.add('hidden');
-        // Remove any prompt display from previous result
         var oldPrompt = resultsSection.querySelector('.results-prompt');
         if (oldPrompt) oldPrompt.remove();
         if (loadingState) loadingState.classList.remove('hidden');
         resultsSection.classList.add('results-loading');
         resultsSection.classList.remove('hidden');
+
+        // Measure natural height before animating
+        var naturalHeight = resultsSection.scrollHeight;
+        var growDuration = Math.round(MORPH_DURATION * 0.5);
+
+        // Animate from 0 to natural — no fill, no inline style pre-sets
+        // The animation drives the values while running; on finish, natural layout takes over
+        // Use ease-out (no overshoot) for height growth
+        loadingGrowAnim = resultsSection.animate([
+            { height: '0px', opacity: 0, transform: 'scale(0.97)', overflow: 'hidden' },
+            { height: naturalHeight + 'px', opacity: 1, transform: 'scale(1)', overflow: 'hidden' }
+        ], {
+            duration: growDuration,
+            easing: 'cubic-bezier(0.0, 0, 0.2, 1)',
+        });
+        loadingGrowAnim.onfinish = function () { loadingGrowAnim = null; };
+    }
+
+    function submitEstimate(payload) {
+        lastPayload = payload;
+
+        if (resultsShowing && !resultsSection.classList.contains('hidden')) {
+            // Results currently showing — morph into history card, then load
+            compactInput();
+
+            morphResultToHistory(function () {
+                beginLoading();
+            });
+        } else {
+            // First submit — compact input, nudge history, show loading
+            compactInput();
+            nudgeHistoryDown();
+            beginLoading();
+        }
 
         submitBtn.disabled = true;
         submitText.textContent = 'Estimating...';
@@ -529,15 +655,133 @@
     }
 
     function showResults(html, isError) {
+        // Temporarily hide hero/beard that may have been set before this call
+        // so we measure only the loading-state height
+        if (calorieHero) calorieHero.classList.add('hidden');
+        if (resultsBeard) resultsBeard.classList.add('hidden');
+
+        // Capture loading height (just spinner + padding)
+        var loadingHeight = parseFloat(getComputedStyle(resultsSection).height) || resultsSection.offsetHeight;
         clearResultsAnimation();
         resultsSection.classList.remove('results-loading');
+
+        var growDuration = Math.round(MORPH_DURATION * 0.625);
+        var staggerBase = Math.round(MORPH_DURATION * 0.1875);
+        var staggerStep = Math.round(MORPH_DURATION * 0.1);
+        var revealDuration = Math.round(MORPH_DURATION * 0.375);
+
+        // Lock the section at loading height while we swap content
+        resultsSection.style.height = loadingHeight + 'px';
+        resultsSection.style.overflow = 'hidden';
+
+        // Hide loading state before measuring naturalHeight
+        if (loadingState) loadingState.classList.add('hidden');
+
+        // Swap in new content
         resultsContent.innerHTML = html;
         resultsSection.classList.remove('hidden');
+
+        // Restore hero/beard visibility (they were hidden for loading measurement)
+        // Then set them to opacity:0 for stagger reveal
         if (isError) {
             if (calorieHero) calorieHero.classList.add('hidden');
+        } else {
+            if (calorieHero) calorieHero.classList.remove('hidden');
         }
-        // Enable compact input clicking after results are rendered
-        setTimeout(function () { isCompactClickable = true; }, 100);
+        // Un-hide beard now so naturalHeight includes it
+        // (submitEstimate also un-hides it, but we need it for measurement)
+        if (resultsBeard && !isError) resultsBeard.classList.remove('hidden');
+
+        var currentHeight = loadingHeight;
+
+        // Hide content items for stagger reveal (invisible but taking space)
+        var allItems = resultsContent.querySelectorAll('.result-item, .result-meta, .result-line, .error-text');
+        for (var i = 0; i < allItems.length; i++) {
+            allItems[i].style.opacity = '0';
+            allItems[i].style.transform = 'translateY(6px)';
+        }
+        if (calorieHero && !calorieHero.classList.contains('hidden')) {
+            calorieHero.style.opacity = '0';
+            calorieHero.style.transform = 'translateY(6px)';
+        }
+        if (resultsBeard && !resultsBeard.classList.contains('hidden')) {
+            resultsBeard.style.opacity = '0';
+        }
+
+        // Temporarily unlock height to measure natural size (loading hidden, all content at opacity:0 but occupying space)
+        resultsSection.style.height = '';
+        var naturalHeight = resultsSection.offsetHeight;
+        // Re-lock at current height for smooth animation
+        resultsSection.style.height = currentHeight + 'px';
+
+        // Phase 2 function: Stagger-reveal content line by line
+        function revealContent() {
+            resultsSection.style.overflow = '';
+            resultsSection.style.transformOrigin = '';
+
+            // Calorie hero first
+            if (calorieHero && !calorieHero.classList.contains('hidden')) {
+                calorieHero.style.transition = 'opacity ' + revealDuration + 'ms ease, transform ' + revealDuration + 'ms ease';
+                calorieHero.style.opacity = '1';
+                calorieHero.style.transform = 'translateY(0)';
+            }
+
+            // Then each result line staggered
+            for (var j = 0; j < allItems.length; j++) {
+                (function (item, delay) {
+                    setTimeout(function () {
+                        item.style.transition = 'opacity ' + revealDuration + 'ms ease, transform ' + revealDuration + 'ms ease';
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateY(0)';
+                    }, delay);
+                })(allItems[j], staggerBase + j * staggerStep);
+            }
+
+            // Beard last
+            if (resultsBeard && !resultsBeard.classList.contains('hidden')) {
+                setTimeout(function () {
+                    resultsBeard.style.transition = 'opacity ' + revealDuration + 'ms ease';
+                    resultsBeard.style.opacity = '1';
+                }, staggerBase + allItems.length * staggerStep);
+            }
+
+            // Enable compact clicking after all animations
+            setTimeout(function () {
+                isCompactClickable = true;
+                // Clean up inline styles
+                if (calorieHero) { calorieHero.style.transition = ''; calorieHero.style.transform = ''; }
+                for (var k = 0; k < allItems.length; k++) {
+                    allItems[k].style.transition = '';
+                    allItems[k].style.transform = '';
+                    allItems[k].style.opacity = '';
+                }
+                if (resultsBeard) { resultsBeard.style.transition = ''; resultsBeard.style.opacity = ''; }
+            }, revealDuration + staggerBase + allItems.length * staggerStep);
+        }
+
+        // Phase 1: Grow card from loading height to natural results height
+        resultsSection.style.overflow = 'hidden';
+        resultsSection.style.transformOrigin = 'top center';
+
+        if (Math.abs(currentHeight - naturalHeight) > 2) {
+            // Use ease-out (no overshoot) for height — spring easing overshoots
+            // which makes the card grow beyond its final size
+            var growAnim = resultsSection.animate([
+                { height: currentHeight + 'px' },
+                { height: naturalHeight + 'px' }
+            ], {
+                duration: growDuration,
+                easing: 'cubic-bezier(0.0, 0, 0.2, 1)',
+            });
+            growAnim.onfinish = function () {
+                resultsSection.style.height = '';
+                revealContent();
+            };
+        } else {
+            resultsSection.style.height = '';
+            revealContent();
+        }
+
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -548,58 +792,152 @@
     if (inputCard) {
         inputCard.addEventListener('click', function (e) {
             if (!isCompactClickable) return;
-            // Don't trigger on toolbar button clicks
             if (e.target.closest('.toolbar-btn') || e.target.closest('.submit-pill') ||
                 e.target.closest('.model-select')) return;
 
-            // Animate results collapsing before hiding
-            animateResultsIntoHistory(function () {
-                resultsShowing = false;
-                expandInput();
-                renderHistory();
-                if (loadingState) loadingState.classList.add('hidden');
+            isCompactClickable = false;
 
-                lastResultText = '';
+            // Step 1: Expand input
+            expandInput();
+            lastResultText = '';
 
-                // Focus textarea and place cursor at end
-                if (foodInput) {
-                    setTimeout(function () {
-                        foodInput.focus();
-                        foodInput.style.height = 'auto';
-                        foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
-                    }, 100);
-                }
+            // Step 2: Quick swap — skip the slow Phase 1 fade/collapse.
+            // Just hide results and shift history down.
+            quickMorphToHistory();
 
-                // Re-expand history
-                expandHistory();
-            });
+            if (loadingState) loadingState.classList.add('hidden');
+            if (foodInput) {
+                setTimeout(function () {
+                    foodInput.focus();
+                    foodInput.style.height = 'auto';
+                    foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
+                }, 100);
+            }
         });
+    }
+
+    // Quick morph for edit-expand: skip the slow Phase 1 fade/collapse.
+    // Just hide results, render history, and do the tracked-treads shift.
+    // No content fade-out, no height collapse — instant swap + slide.
+    function quickMorphToHistory() {
+        if (!resultsSection || resultsSection.classList.contains('hidden')) return;
+
+        // Cancel any running collapse animation
+        if (resultsCollapseAnim) {
+            resultsCollapseAnim.cancel();
+            resultsCollapseAnim = null;
+        }
+
+        // Hide results immediately
+        resultsSection.classList.add('hidden');
+        resultsSection.classList.remove('morphing');
+        resultsSection.style.height = '';
+        resultsSection.style.padding = '';
+        resultsSection.style.borderRadius = '';
+        resultsSection.style.opacity = '';
+        resultsSection.style.transform = '';
+        // Clean content states
+        [calorieHero, resultsContent, resultsBeard].forEach(function (el) {
+            if (el) { el.style.transition = ''; el.style.opacity = ''; }
+        });
+        var oldSummary = resultsSection.querySelector('.results-morph-summary');
+        if (oldSummary) oldSummary.remove();
+
+        // Render history and animate
+        resultsShowing = false;
+        renderHistory();
+        var historySection = document.getElementById('history');
+        if (historySection) historySection.classList.remove('hidden');
+        shiftHistoryDown();
     }
 
     var resultsCollapseAnim = null;
 
-    function animateResultsIntoHistory(callback) {
+    function morphResultToHistory(callback) {
         if (!resultsSection || resultsSection.classList.contains('hidden')) {
             callback();
             return;
         }
 
-        var startHeight = resultsSection.offsetHeight;
-        resultsSection.style.overflow = 'hidden';
+        var history = getHistory();
+        if (history.length === 0) { callback(); return; }
+        var newestEntry = history[0];
+        var historyList = document.getElementById('history-list');
 
+        // ── Phase 1: Collapse results card ──
+        // Fade out detailed content, shrink to history-card height
+        var startHeight = resultsSection.offsetHeight;
+        var targetHeight = 48;
+        var collapseDuration = Math.round(MORPH_DURATION * 0.6);
+
+        resultsSection.classList.add('morphing');
+
+        // Fade out content
+        var contentEls = [calorieHero, resultsContent, resultsBeard].filter(function (el) { return el; });
+        for (var c = 0; c < contentEls.length; c++) {
+            contentEls[c].style.transition = 'opacity ' + Math.round(collapseDuration * 0.4) + 'ms ease';
+            contentEls[c].style.opacity = '0';
+        }
+
+        // Build and insert summary overlay
+        var foodNames = extractFoodNames(newestEntry.gemini_response);
+        var summaryText = foodNames.length > 0 ? foodNames.join(', ') : (newestEntry.input_text || 'Meal');
+        var entryRange = parseTotalRange(newestEntry.gemini_response);
+        var summaryHtml = '<div class="results-morph-summary">';
+        if (newestEntry.thumbnail) {
+            summaryHtml += '<img style="width:32px;height:32px;border-radius:var(--radius-sm);flex-shrink:0;" src="' + newestEntry.thumbnail + '" alt="">';
+        }
+        summaryHtml += '<span class="history-entry-food-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(summaryText) + '</span>';
+        if (entryRange) {
+            summaryHtml += '<span class="history-entry-calories">' + entryRange.low + ' ~ ' + entryRange.high + '</span>';
+        }
+        summaryHtml += '</div>';
+        var summaryEl = document.createElement('div');
+        summaryEl.innerHTML = summaryHtml;
+        summaryEl = summaryEl.firstElementChild;
+        resultsSection.appendChild(summaryEl);
+
+        // Fade in summary at 40%
+        setTimeout(function () {
+            summaryEl.style.transition = 'opacity ' + Math.round(collapseDuration * 0.5) + 'ms ease';
+            summaryEl.style.opacity = '1';
+        }, Math.round(collapseDuration * 0.4));
+
+        // Animate height collapse
         resultsCollapseAnim = resultsSection.animate([
-            { opacity: 1, maxHeight: startHeight + 'px', transform: 'translateY(0) scale(1)' },
-            { opacity: 0, maxHeight: '0px', transform: 'translateY(-8px) scale(0.98)' }
+            { height: startHeight + 'px', padding: 'var(--spacing-md)', borderRadius: 'var(--radius-lg)' },
+            { height: targetHeight + 'px', padding: 'var(--spacing-sm) var(--spacing-md)', borderRadius: 'var(--radius-md)' }
         ], {
-            duration: 250,
-            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            duration: collapseDuration,
+            easing: ANIM_EASING,
         });
 
+        // ── Phase 2: At collapse end, swap into history and animate ──
         resultsCollapseAnim.onfinish = function () {
-            resultsSection.style.overflow = '';
-            resultsSection.classList.add('hidden');
             resultsCollapseAnim = null;
-            callback();
+
+            // Hide results, clean up
+            resultsSection.classList.add('hidden');
+            resultsSection.classList.remove('morphing');
+            resultsSection.style.height = '';
+            resultsSection.style.padding = '';
+            resultsSection.style.borderRadius = '';
+            if (summaryEl.parentNode) summaryEl.remove();
+            for (var c = 0; c < contentEls.length; c++) {
+                contentEls[c].style.transition = '';
+                contentEls[c].style.opacity = '';
+            }
+
+            // Render history with the new card at the top
+            resultsShowing = false;
+            renderHistory();
+            if (historySection) historySection.classList.remove('hidden');
+
+            // Tracked-treads: whole list slides down one slot, new card fades in
+            shiftHistoryDown();
+
+            // Wait for shift animation to finish before showing loading
+            setTimeout(callback, Math.round(MORPH_DURATION * 0.7));
         };
     }
 
@@ -607,6 +945,23 @@
         if (resultsCollapseAnim) {
             resultsCollapseAnim.cancel();
             resultsCollapseAnim = null;
+        }
+        if (loadingGrowAnim) {
+            loadingGrowAnim.cancel();
+            loadingGrowAnim = null;
+        }
+        if (resultsSection) {
+            resultsSection.classList.remove('morphing');
+            resultsSection.style.overflow = '';
+            resultsSection.style.transformOrigin = '';
+            resultsSection.style.height = '';
+            resultsSection.style.padding = '';
+            resultsSection.style.borderRadius = '';
+            resultsSection.style.opacity = '';
+            resultsSection.style.transform = '';
+            // Remove any leftover summary overlay
+            var oldSummary = resultsSection.querySelector('.results-morph-summary');
+            if (oldSummary) oldSummary.remove();
         }
     }
 
@@ -655,42 +1010,15 @@
         return div.innerHTML;
     }
 
-    // ── History toggle ──
+    // ── History section ──
 
-    var historyToggle = document.getElementById('history-toggle');
-    var historyCollapsible = document.getElementById('history-collapsible');
     var historySection = document.getElementById('history');
 
-    function collapseHistory() {
-        if (historyCollapsible) historyCollapsible.classList.remove('expanded');
-        if (historySection) historySection.classList.remove('expanded');
-    }
-
     function expandHistory() {
-        if (historyCollapsible) historyCollapsible.classList.add('expanded');
-        if (historySection) {
-            historySection.classList.add('expanded');
-            // Re-show history if it was hidden during results display
-            if (getHistory().length > 0) historySection.classList.remove('hidden');
+        if (historySection && getHistory().length > 0) {
+            historySection.classList.remove('hidden');
         }
     }
-
-    function toggleHistory() {
-        if (historyCollapsible) historyCollapsible.classList.toggle('expanded');
-        if (historySection) historySection.classList.toggle('expanded');
-    }
-
-    if (historyToggle) {
-        historyToggle.addEventListener('click', function (e) {
-            // Don't toggle if clicking the overflow menu area
-            if (e.target.closest('#clear-history')) return;
-            if (e.target.closest('.history-overflow')) return;
-            toggleHistory();
-        });
-    }
-
-    // Start history expanded
-    if (historySection) historySection.classList.add('expanded');
 
     // ── localStorage history ──
 
@@ -808,7 +1136,7 @@
         var entryRange = parseTotalRange(entry.gemini_response);
 
         var h = '';
-        h += '<div class="history-entry" data-index="' + i + '">';
+        h += '<div class="history-entry" data-index="' + i + '" data-timestamp="' + escapeHtml(entry.timestamp) + '">';
 
         // Header row — crossfades between collapsed/expanded
         h += '<div class="history-entry-header-row">';
@@ -864,15 +1192,55 @@
         return h;
     }
 
-    function renderHistory() {
+    // Helper: create a DOM element from buildEntryHtml string
+    function createEntryElement(entry, index) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = buildEntryHtml(entry, index);
+        var el = tmp.firstElementChild;
+        // Store timestamp for identity matching
+        el.setAttribute('data-timestamp', entry.timestamp);
+        return el;
+    }
+
+    // Helper: bind events on a single history entry element
+    function bindSingleEntryEvents(entryEl) {
+        entryEl.addEventListener('click', function (e) {
+            if (e.target.closest('.history-beard-btn')) return;
+            this.classList.toggle('expanded');
+        });
+
+        var promptBtn = entryEl.querySelector('.history-show-prompt-btn');
+        if (promptBtn) {
+            promptBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var idx = this.getAttribute('data-entry-index');
+                var prompt = entryEl.querySelector('[data-prompt-index="' + idx + '"]');
+                if (prompt) prompt.classList.toggle('hidden');
+                this.classList.toggle('active');
+            });
+        }
+
+        var archiveBtn = entryEl.querySelector('.history-archive-btn');
+        if (archiveBtn) {
+            archiveBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var idx = parseInt(this.getAttribute('data-entry-index'), 10);
+                archiveEntry(idx);
+            });
+        }
+    }
+
+    function renderHistory(options) {
+        options = options || {};
+        var skipNewest = options.skipNewest || false; // when morph handles the newest card
         var historyList = document.getElementById('history-list');
         if (!historyList) return;
 
         var history = getHistory();
-
         var startIndex = resultsShowing ? 1 : 0;
+        if (skipNewest && startIndex === 0) startIndex = 1;
 
-        if (history.length === 0 || (resultsShowing && history.length <= 1)) {
+        if (history.length === 0 || (startIndex >= history.length)) {
             historyList.innerHTML = '';
             if (historySection) historySection.classList.add('hidden');
             return;
@@ -880,36 +1248,75 @@
 
         if (historySection) historySection.classList.remove('hidden');
 
-        var totalItems = history.length - startIndex;
-        var html = '';
+        // Build list of timestamps that should be in the normal (non-stack) area
+        var normalEnd = historyShowAll ? history.length : Math.min(history.length, startIndex + STACK_AFTER);
+        var wantedTimestamps = [];
+        for (var i = startIndex; i < normalEnd; i++) {
+            wantedTimestamps.push(history[i].timestamp);
+        }
 
-        if (historyShowAll) {
-            // Show all items flat
-            for (var i = startIndex; i < history.length; i++) {
-                html += buildEntryHtml(history[i], i);
+        // Get existing entry elements (not stack containers)
+        var existingEntries = historyList.querySelectorAll(':scope > .history-entry');
+        var existingMap = {};
+        for (var e = 0; e < existingEntries.length; e++) {
+            var ts = existingEntries[e].getAttribute('data-timestamp');
+            if (ts) existingMap[ts] = existingEntries[e];
+        }
+
+        // Remove the stack section if present (will rebuild if needed)
+        var oldStack = historyList.querySelector('.history-stack');
+        if (oldStack) oldStack.remove();
+
+        // Remove entries no longer in the normal range
+        for (var ts in existingMap) {
+            if (wantedTimestamps.indexOf(ts) === -1) {
+                existingMap[ts].remove();
+                delete existingMap[ts];
             }
-        } else {
-            // Show first STACK_AFTER items normally
-            var normalEnd = Math.min(history.length, startIndex + STACK_AFTER);
-            for (var i = startIndex; i < normalEnd; i++) {
-                html += buildEntryHtml(history[i], i);
+        }
+
+        // Insert/reorder normal entries
+        var prevSibling = null;
+        for (var w = 0; w < wantedTimestamps.length; w++) {
+            var wantTs = wantedTimestamps[w];
+            var dataIndex = startIndex + w;
+            var entryEl;
+
+            if (existingMap[wantTs]) {
+                entryEl = existingMap[wantTs];
+                // Update data-index in case it shifted
+                entryEl.setAttribute('data-index', dataIndex);
+            } else {
+                // New entry — create and insert
+                entryEl = createEntryElement(history[dataIndex], dataIndex);
+                bindSingleEntryEvents(entryEl);
             }
 
-            // If there are more, render a stack
+            // Ensure correct order: should come after prevSibling
+            if (prevSibling) {
+                if (entryEl.previousElementSibling !== prevSibling) {
+                    prevSibling.after(entryEl);
+                }
+            } else {
+                if (historyList.firstElementChild !== entryEl) {
+                    historyList.prepend(entryEl);
+                }
+            }
+            prevSibling = entryEl;
+        }
+
+        // Build stack section if needed (still uses innerHTML since structural)
+        if (!historyShowAll) {
             var stackStart = startIndex + STACK_AFTER;
             if (stackStart < history.length) {
                 var stackedCount = history.length - stackStart;
-                var layers = Math.min(stackedCount - 1, MAX_STACK_LAYERS - 1); // ghost layers behind top card
-
+                var html = '';
                 html += '<div class="history-stack" id="history-stack">';
                 html += '<div class="history-stack-cards">';
-
-                // Top card (5th item) — interactive, not part of the hover zone
                 html += '<div class="history-stack-item" style="--layer: 0;">';
                 html += buildEntryHtml(history[stackStart], stackStart);
                 html += '</div>';
 
-                // Stacked cards behind — wrapped for hover targeting
                 var stackVisible = Math.min(stackedCount, 3);
                 if (stackVisible > 1) {
                     html += '<div class="history-stack-rest" id="history-stack-rest">';
@@ -919,14 +1326,10 @@
                         html += buildEntryHtml(history[stackIdx], stackIdx);
                         html += '</div>';
                     }
-
-                    // Always show 2 empty ghost cards to hint at more
                     html += '<div class="history-stack-ghost" style="--ghost: 0;"></div>';
                     html += '<div class="history-stack-ghost" style="--ghost: 1;"></div>';
-
                     html += '</div>';
                 }
-
                 html += '</div>';
 
                 var hiddenCount = stackedCount - stackVisible;
@@ -936,24 +1339,27 @@
                     html += '<button type="button" class="history-stack-label" id="history-stack-expand">Show all</button>';
                 }
                 html += '</div>';
+
+                var stackTmp = document.createElement('div');
+                stackTmp.innerHTML = html;
+                var stackEl = stackTmp.firstElementChild;
+                historyList.appendChild(stackEl);
+
+                // Bind events on stack entries
+                var stackEntries = stackEl.querySelectorAll('.history-entry');
+                for (var se = 0; se < stackEntries.length; se++) {
+                    bindSingleEntryEvents(stackEntries[se]);
+                }
+
+                var stackRestEl = document.getElementById('history-stack-rest');
+                var stackExpandBtn = document.getElementById('history-stack-expand');
+                var expandStack = function (ev) {
+                    ev.stopPropagation();
+                    animateStackExpand();
+                };
+                if (stackRestEl) stackRestEl.addEventListener('click', expandStack);
+                if (stackExpandBtn) stackExpandBtn.addEventListener('click', expandStack);
             }
-        }
-
-        historyList.innerHTML = html;
-        bindHistoryEntryEvents();
-
-        // Stack expand — click the stacked rest area, ghosts, or label
-        var stackRestEl = document.getElementById('history-stack-rest');
-        var stackExpandBtn = document.getElementById('history-stack-expand');
-        var expandStack = function (e) {
-            e.stopPropagation();
-            animateStackExpand();
-        };
-        if (stackRestEl) {
-            stackRestEl.addEventListener('click', expandStack);
-        }
-        if (stackExpandBtn) {
-            stackExpandBtn.addEventListener('click', expandStack);
         }
     }
 
@@ -1036,55 +1442,6 @@
         }, 300);
     }
 
-    function bindHistoryEntryEvents() {
-        var historyList = document.getElementById('history-list');
-        if (!historyList) return;
-
-        // Click entry header to expand/collapse
-        var entries = historyList.querySelectorAll('.history-entry');
-        for (var i = 0; i < entries.length; i++) {
-            entries[i].addEventListener('click', function (e) {
-                // Don't toggle when clicking beard action buttons
-                if (e.target.closest('.history-beard-btn')) return;
-                this.classList.toggle('expanded');
-            });
-        }
-
-        // Show prompt buttons (in beard)
-        var promptBtns = historyList.querySelectorAll('.history-show-prompt-btn');
-        for (var k = 0; k < promptBtns.length; k++) {
-            promptBtns[k].addEventListener('click', function (e) {
-                e.stopPropagation();
-                var idx = this.getAttribute('data-entry-index');
-                var prompt = historyList.querySelector('[data-prompt-index="' + idx + '"]');
-                if (prompt) prompt.classList.toggle('hidden');
-                // Toggle active state on button
-                this.classList.toggle('active');
-            });
-        }
-
-        // Archive buttons
-        var archiveBtns = historyList.querySelectorAll('.history-archive-btn');
-        for (var l = 0; l < archiveBtns.length; l++) {
-            archiveBtns[l].addEventListener('click', function (e) {
-                e.stopPropagation();
-                var idx = parseInt(this.getAttribute('data-entry-index'), 10);
-                archiveEntry(idx);
-            });
-        }
-    }
-
-    // History title overflow menu
-    var historyOverflowBtn = document.getElementById('history-overflow-btn');
-    var historyOverflowMenu = document.getElementById('history-overflow-menu');
-
-    if (historyOverflowBtn && historyOverflowMenu) {
-        historyOverflowBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            historyOverflowMenu.classList.toggle('hidden');
-        });
-    }
-
     // Mock exit button + dialog
     var mockExitBtn = document.getElementById('mock-exit-btn');
     var mockExitDialog = document.getElementById('mock-exit-dialog');
@@ -1122,11 +1479,11 @@
         });
     }
 
-    var clearHistoryBtn = document.getElementById('clear-history');
+    var clearHistoryBtn = document.getElementById('settings-clear-history');
     if (clearHistoryBtn) {
         clearHistoryBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            if (historyOverflowMenu) historyOverflowMenu.classList.add('hidden');
+            if (settingsMenu) settingsMenu.classList.add('hidden');
             if (confirm('Clear all history?')) {
                 try { localStorage.removeItem(HISTORY_KEY); } catch (e) { /* noop */ }
                 renderHistory();
