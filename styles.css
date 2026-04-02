@@ -1917,69 +1917,8 @@ a:hover {
 
 /* ── Mock exit dialog ── */
 
-.mock-exit-dialog {
-    border: none;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-bg-surface);
-    color: var(--color-text-primary);
-    padding: 0;
-    max-width: 300px;
-    width: calc(100% - var(--spacing-lg));
-    box-shadow: var(--shadow-xl);
-    margin: auto;
-}
-
-.mock-exit-dialog::backdrop {
-    background-color: var(--color-bg-overlay);
-}
-
-.mock-exit-dialog-content {
-    padding: var(--spacing-lg);
-}
-
-.mock-exit-dialog-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--spacing-lg);
-}
-
-.mock-exit-dialog-title {
-    font-size: var(--typography-lg-fontSize);
-    font-weight: var(--typography-xl-fontWeight);
-    margin: 0;
-}
-
-.mock-exit-dialog-actions {
-    display: flex;
-    gap: var(--spacing-sm);
-}
-
-.mock-exit-action-btn {
-    flex: 1;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: none;
-    border-radius: var(--radius-md);
-    font-size: var(--typography-base-fontSize);
-    font-weight: var(--typography-xl-fontWeight);
-    cursor: pointer;
-    transition: background-color var(--transition-fast);
-}
-
-.mock-exit-yes {
-    background-color: crimson;
-    color: white;
-}
-
-.mock-exit-yes:hover {
-    background-color: #b01030;
-}
-
-.mock-exit-no {
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
-}
-
-.mock-exit-no:hover {
-    background-color: var(--color-interactive-hover);
+.mock-exit-note {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--spacing-md);
 }

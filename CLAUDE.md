@@ -20,8 +20,9 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 | File | Purpose |
 |---|---|
 | `index.php` | Main page — text input hero, photo upload, results display, localStorage history |
-| `api/estimate.php` | POST endpoint — calls Gemini API, returns JSON |
-| `includes/config.php` | Gitignored config — API key, DB credentials, passphrase |
+| `api/estimate.php` | POST endpoint — calls Gemini/Claude API, returns JSON |
+| `api/usage.php` | GET endpoint — returns current global usage counts and limits (prefetched on page load) |
+| `includes/config.php` | Gitignored config — API key, DB credentials, passphrase, per-model limits, hard-stop flag |
 | `includes/csrf.php` | CSRF token generation and validation |
 | `includes/auth.php` | Auth helper functions (passphrase + username login) |
 | `login.php` | Passphrase entry + username selection/creation |
@@ -39,7 +40,8 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 - Logged-in users get model selection + persistent MySQL history
 - localStorage history and MySQL history are independent and do not sync
 - Thumbnails are ~200px base64 JPEG strings, never full images
-- API usage counter tracks three buckets: flash (250 RPD), pro (100 RPD), claude (paid, no limit — informational)
+- API usage counter tracks per-model: flash, flash-thinking, pro, sonnet, opus — each with its own configurable daily limit in config.php
+- Hard-stop flag (`usage_hard_stop`) in config blocks requests when a model's limit is reached; can be toggled off to allow unlimited usage
 - Two AI providers: Gemini (free tier, has grounding for restaurant lookups) and Claude (paid, uses training knowledge). Provider routing handled in api/estimate.php
 - Claude Sonnet and Opus are only available to logged-in users
 - CSRF protection on all forms

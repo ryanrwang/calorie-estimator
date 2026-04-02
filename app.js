@@ -70,6 +70,9 @@
                 if (modelSelectLabel) modelSelectLabel.textContent = labelText;
 
                 modelDropdown.classList.add('hidden');
+
+                // Refresh usage ring for the newly selected model
+                updateUsageDisplay();
             });
         }
     }
@@ -174,13 +177,20 @@
     var compactUsageTooltip = document.getElementById('compact-usage-tooltip');
     var RING_CIRCUMFERENCE = 2 * Math.PI * 10; // r=10 → ~62.83
 
-    // Initialize ring to empty state (visible but unfilled)
-    if (usageRingFill) {
-        usageRingFill.style.strokeDasharray = RING_CIRCUMFERENCE;
-        usageRingFill.style.strokeDashoffset = RING_CIRCUMFERENCE;
+    // Initialize both rings to empty state
+    var allRingFills = [usageRingFill, compactRingFill];
+    for (var r = 0; r < allRingFills.length; r++) {
+        if (allRingFills[r]) {
+            allRingFills[r].style.strokeDasharray = RING_CIRCUMFERENCE;
+            allRingFills[r].style.strokeDashoffset = RING_CIRCUMFERENCE;
+        }
     }
     if (usageRingTooltip) usageRingTooltip.textContent = 'Usage';
     if (compactUsageTooltip) compactUsageTooltip.textContent = 'Usage';
+
+    // Cached usage/limits from server (per-model)
+    var cachedUsage = null;
+    var cachedLimits = null;
 
     function applyRingState(wrap, fill, tooltip, count, limit, label, fraction) {
         if (tooltip) tooltip.textContent = label;
@@ -198,40 +208,31 @@
             fill.style.strokeDashoffset = RING_CIRCUMFERENCE;
             wrap.classList.remove('usage-ring-warn');
         }
-        wrap.classList.remove('hidden');
     }
 
-    function updateUsageDisplay(usage) {
-        if (!usage) return;
+    function updateUsageDisplay(usage, limits) {
+        if (usage) cachedUsage = usage;
+        if (limits) cachedLimits = limits;
+        if (!cachedUsage) return;
 
-        var bucket = getUsageBucket(selectedModel);
-        var count = usage[bucket] || 0;
-        var limit = 0;
-        var label = '';
-
-        if (bucket === 'flash') {
-            limit = 250;
-            label = count + ' / ' + limit + ' today';
-        } else if (bucket === 'pro') {
-            limit = 100;
-            label = count + ' / ' + limit + ' today';
-        } else if (bucket === 'claude') {
-            label = count + ' today';
-        }
-
+        var model = selectedModel;
+        var count = cachedUsage[model] || 0;
+        var limit = cachedLimits && cachedLimits[model] ? cachedLimits[model] : 0;
+        var label = limit > 0 ? count + ' / ' + limit + ' today' : count + ' today';
         var fraction = limit > 0 ? Math.min(count / limit, 1) : 0;
 
-        // Update both rings
+        // Update both rings identically — CSS handles visibility per state
         if (usageRingWrap) applyRingState(usageRingWrap, usageRingFill, usageRingTooltip, count, limit, label, fraction);
         if (compactUsageRing) applyRingState(compactUsageRing, compactRingFill, compactUsageTooltip, count, limit, label, fraction);
     }
 
-    function getUsageBucket(model) {
-        if (model === 'flash' || model === 'flash-thinking') return 'flash';
-        if (model === 'pro') return 'pro';
-        if (model === 'sonnet' || model === 'opus') return 'claude';
-        return 'flash';
-    }
+    // Prefetch usage on page load
+    fetch('api/usage.php')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.usage) updateUsageDisplay(data.usage, data.limits);
+        })
+        .catch(function () { /* silent — ring stays hidden until first API call */ });
 
     // ── Copy to clipboard (hidden for now) ──
 
@@ -536,7 +537,14 @@
         .then(function (res) { return res.json(); })
         .then(function (data) {
             if (data.usage) {
-                updateUsageDisplay(data.usage);
+                // In mock mode, accumulate fake bumps on top of cached usage
+                if (window.APP_MOCK && data.mock_bump && cachedUsage) {
+                    var model = data.model || selectedModel;
+                    cachedUsage[model] = (cachedUsage[model] || 0) + data.mock_bump;
+                    updateUsageDisplay(null, data.limits);
+                } else {
+                    updateUsageDisplay(data.usage, data.limits);
+                }
             }
 
             if (data.error) {
@@ -623,6 +631,37 @@
             if (currentApiImage) {
                 payload.image = currentApiImage;
                 payload.thumbnail = currentThumbnail;
+            }
+
+            // Client-side quota check (catches mock-accumulated usage)
+            if (cachedUsage && cachedLimits) {
+                var modelLimit = cachedLimits[selectedModel] || 0;
+                var modelCount = cachedUsage[selectedModel] || 0;
+                if (modelLimit > 0 && modelCount >= modelLimit) {
+                    var modelNames = {
+                        'flash': 'Flash', 'flash-thinking': 'Flash Thinking',
+                        'pro': 'Pro', 'sonnet': 'Sonnet', 'opus': 'Opus'
+                    };
+                    var displayName = modelNames[selectedModel] || selectedModel;
+                    var errorHtml = '<p class="error-text">Daily limit reached for ' + displayName +
+                        ' (' + modelCount + '/' + modelLimit + ') \u2014 resets at midnight PT.</p>' +
+                        '<button type="button" class="retry-btn" id="retry-btn">Try Again</button>';
+                    // Use the full submit flow so the error displays in the results area
+                    compactInput();
+                    if (!resultsShowing) nudgeHistoryDown();
+                    beginLoading();
+                    // Short delay to let loading state render, then show error
+                    setTimeout(function () {
+                        showResults(errorHtml, true);
+                        var retryBtn = document.getElementById('retry-btn');
+                        if (retryBtn) {
+                            retryBtn.addEventListener('click', function () {
+                                submitEstimate(payload);
+                            });
+                        }
+                    }, 300);
+                    return;
+                }
             }
 
             submitEstimate(payload);
@@ -876,7 +915,7 @@
         inputCard.addEventListener('click', function (e) {
             if (!isCompactClickable) return;
             if (e.target.closest('.toolbar-btn') || e.target.closest('.submit-pill') ||
-                e.target.closest('.model-select')) return;
+                e.target.closest('.model-select') || e.target.closest('.compact-clear-btn')) return;
 
             isCompactClickable = false;
 
@@ -897,6 +936,37 @@
                 }, 100);
             }
         });
+
+        // Restart button — clear input and expand (fresh start)
+        var compactClearBtn = inputCard.querySelector('.compact-clear-btn');
+        if (compactClearBtn) {
+            compactClearBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!inputCard.classList.contains('compact')) return;
+
+                isCompactClickable = false;
+
+                // Clear all input state
+                if (foodInput) {
+                    foodInput.value = '';
+                    foodInput.style.height = '';
+                }
+                currentApiImage = null;
+                currentThumbnail = null;
+                if (photoInput) photoInput.value = '';
+                if (photoPreview) photoPreview.classList.add('hidden');
+                if (photoPreviewImg) photoPreviewImg.src = '';
+                lastResultText = '';
+
+                expandInput();
+                quickMorphToHistory();
+
+                if (loadingState) loadingState.classList.add('hidden');
+                if (foodInput) {
+                    setTimeout(function () { foodInput.focus(); }, 100);
+                }
+            });
+        }
     }
 
     // Quick morph for edit-expand: skip the slow Phase 1 fade/collapse.
