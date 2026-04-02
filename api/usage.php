@@ -36,5 +36,7 @@ foreach ($ALL_MODELS as $m) {
 
 echo json_encode([
     'usage' => $usage,
-    'limits' => isset($config['usage_limits']) ? $config['usage_limits'] : [],
+    'limits' => isset($config['usage_limits']) ? $config['usage_limits'] : [
+        'flash' => 200, 'flash-thinking' => 200, 'pro' => 80, 'sonnet' => 50, 'opus' => 20,
+    ],
 ]);

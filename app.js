@@ -217,8 +217,8 @@
             allRingFills[r].style.strokeDashoffset = RING_CIRCUMFERENCE;
         }
     }
-    if (usageRingTooltip) usageRingTooltip.textContent = 'Usage';
-    if (compactUsageTooltip) compactUsageTooltip.textContent = 'Usage';
+    if (usageRingTooltip) usageRingTooltip.textContent = 'Loading\u2026';
+    if (compactUsageTooltip) compactUsageTooltip.textContent = 'Loading\u2026';
 
     // Cached usage/limits from server (per-model)
     var cachedUsage = null;
@@ -250,7 +250,7 @@
         var model = selectedModel;
         var count = cachedUsage[model] || 0;
         var limit = cachedLimits && cachedLimits[model] ? cachedLimits[model] : 0;
-        var label = limit > 0 ? count + ' / ' + limit + ' today' : count + ' today';
+        var label = limit > 0 ? count + '/' + limit + ' shared usage' : count + ' shared usage';
         var fraction = limit > 0 ? Math.min(count / limit, 1) : 0;
 
         // Update both rings identically — CSS handles visibility per state
@@ -258,13 +258,21 @@
         if (compactUsageRing) applyRingState(compactUsageRing, compactRingFill, compactUsageTooltip, count, limit, label, fraction);
     }
 
-    // Prefetch usage on page load
-    fetch('api/usage.php')
-        .then(function (res) { return res.json(); })
-        .then(function (data) {
-            if (data.usage) updateUsageDisplay(data.usage, data.limits);
-        })
-        .catch(function () { /* silent — ring stays hidden until first API call */ });
+    // Fetch usage from server and update ring
+    function fetchUsage() {
+        return fetch('api/usage.php')
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.usage) updateUsageDisplay(data.usage, data.limits);
+            })
+            .catch(function () { /* silent */ });
+    }
+
+    // Fetch immediately on page load
+    fetchUsage();
+
+    // Poll every 60s to pick up cross-device usage changes
+    setInterval(fetchUsage, 60000);
 
     // ── Copy to clipboard (hidden for now) ──
 
