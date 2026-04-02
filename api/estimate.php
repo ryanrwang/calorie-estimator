@@ -178,8 +178,8 @@ if ($provider === 'anthropic' && !is_logged_in()) {
 // --- Mock mode ---
 
 if (is_mock_mode()) {
-    // Simulate API latency (4s for animation testing)
-    usleep(rand(3500, 4500) * 1000);
+    // Simulate API latency
+    usleep(rand(1500, 2000) * 1000);
 
     $resultText = mock_generate_response($inputText, $modelId);
 
