@@ -86,7 +86,7 @@ $modelProviders = [
 </head>
 <body>
     <!-- Floating controls -->
-    <div class="floating-controls">
+    <div class="floating-controls entrance">
         <button id="theme-toggle" class="fab-btn" type="button" aria-label="Toggle dark mode">
             <span class="material-symbols-outlined theme-icon">light_mode</span>
         </button>
@@ -107,12 +107,12 @@ $modelProviders = [
     </div>
 
     <main class="app-main">
-        <div class="page-hero">
+        <div class="page-hero entrance">
             <h1 class="brand-title"><a href="index.php" style="text-decoration:none;color:inherit;">Carole</a></h1>
             <p class="brand-subtitle">The calorie estimator</p>
         </div>
 
-        <div class="history-page-header">
+        <div class="history-page-header entrance">
             <h2 class="history-title">Saved History</h2>
             <span class="history-count"><?php echo $totalMeals; ?> <?php echo $totalMeals === 1 ? 'entry' : 'entries'; ?></span>
         </div>

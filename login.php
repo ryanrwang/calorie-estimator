@@ -120,19 +120,19 @@ if ($step === 'username' && (!$mockMode || mock_has_db())) {
 </head>
 <body>
     <!-- Floating controls -->
-    <div class="floating-controls">
+    <div class="floating-controls entrance">
         <button id="theme-toggle" class="fab-btn" type="button" aria-label="Toggle dark mode">
             <span class="material-symbols-outlined theme-icon">light_mode</span>
         </button>
     </div>
 
     <main class="app-main">
-        <div class="page-hero">
+        <div class="page-hero entrance">
             <h1 class="brand-title"><a href="index.php" style="text-decoration:none;color:inherit;">Carole</a></h1>
             <p class="brand-subtitle">The calorie estimator</p>
         </div>
 
-        <div class="login-card">
+        <div class="login-card entrance">
             <h2 class="login-heading">Log In</h2>
 
             <?php if ($error): ?>
