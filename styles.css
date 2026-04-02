@@ -330,7 +330,7 @@ a:hover {
 }
 
 .input-card.compact {
-    cursor: default;
+    cursor: text;
     position: relative;
     box-shadow: none;
 }
