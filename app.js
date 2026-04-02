@@ -204,10 +204,12 @@
     var usageRingWrap = document.getElementById('usage-ring-wrap');
     var usageRingFill = document.getElementById('usage-ring-fill');
     var usageRingTooltip = document.getElementById('usage-ring-tooltip');
+    var usageRingCount = document.getElementById('usage-ring-count');
     var compactUsageRing = document.getElementById('compact-usage-ring');
     var compactRingFill = document.querySelector('.compact-ring-fill');
     var compactUsageTooltip = document.getElementById('compact-usage-tooltip');
-    var RING_CIRCUMFERENCE = 2 * Math.PI * 10; // r=10 → ~62.83
+    var compactRingCount = document.querySelector('.compact-ring-count');
+    var RING_CIRCUMFERENCE = 2 * Math.PI * 13; // r=13 → ~81.68
 
     // Initialize both rings to empty state
     var allRingFills = [usageRingFill, compactRingFill];
@@ -224,8 +226,12 @@
     var cachedUsage = null;
     var cachedLimits = null;
 
-    function applyRingState(wrap, fill, tooltip, count, limit, label, fraction) {
+    function applyRingState(wrap, fill, tooltip, countEl, count, limit, label, fraction) {
         if (tooltip) tooltip.textContent = label;
+        // Show number inside ring: uses so far
+        if (countEl) {
+            countEl.textContent = count;
+        }
         if (limit > 0 && fill) {
             var offset = RING_CIRCUMFERENCE * (1 - fraction);
             fill.style.strokeDasharray = RING_CIRCUMFERENCE;
@@ -254,8 +260,8 @@
         var fraction = limit > 0 ? Math.min(count / limit, 1) : 0;
 
         // Update both rings identically — CSS handles visibility per state
-        if (usageRingWrap) applyRingState(usageRingWrap, usageRingFill, usageRingTooltip, count, limit, label, fraction);
-        if (compactUsageRing) applyRingState(compactUsageRing, compactRingFill, compactUsageTooltip, count, limit, label, fraction);
+        if (usageRingWrap) applyRingState(usageRingWrap, usageRingFill, usageRingTooltip, usageRingCount, count, limit, label, fraction);
+        if (compactUsageRing) applyRingState(compactUsageRing, compactRingFill, compactUsageTooltip, compactRingCount, count, limit, label, fraction);
     }
 
     // Fetch usage from server and update ring

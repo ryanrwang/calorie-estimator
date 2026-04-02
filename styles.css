@@ -690,9 +690,26 @@ a:hover {
     stroke: var(--color-action-primary);
     stroke-width: 2.5;
     stroke-linecap: round;
-    stroke-dasharray: 62.83;
+    stroke-dasharray: 81.68;
     stroke-dashoffset: 0;
     transition: stroke-dashoffset 0.5s ease, stroke var(--transition-fast);
+}
+
+.usage-ring-count {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: var(--typography-3xs-fontSize);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-tertiary);
+    pointer-events: none;
+    user-select: none;
+}
+
+.usage-ring-warn .usage-ring-count {
+    color: var(--color-status-warningText);
 }
 
 .usage-ring-warn .usage-ring-fill {
