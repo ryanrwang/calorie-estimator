@@ -33,6 +33,7 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 | `data/api_usage.json` | Daily API call counter (per model) |
 
 ## Rules
+- When the user asks for "plaintext" output, produce absolutely no markdown formatting — no headers, no bold, no bullets, no backticks, no code blocks. Claude input fields do not render markdown.
 - Auth is optional, not gating. The app works fully without login
 - Logged-out users get Flash only + localStorage history
 - Logged-in users get model selection + persistent MySQL history

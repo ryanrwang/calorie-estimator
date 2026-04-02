@@ -714,9 +714,39 @@ a:hover {
     transform-origin: top center;
 }
 
-/* Results growing in */
-.results.results-entering {
+/* Results morphing into history card */
+.results.morphing {
     overflow: hidden;
+    will-change: height, opacity, padding, border-radius;
+}
+
+/* Summary overlay that fades in during morph */
+.results-morph-summary {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.results-morph-summary .history-entry-food-name {
+    flex: 1;
+    min-width: 0;
+}
+
+/* History card inserted but waiting for morph to finish */
+.history-entry.morph-target {
+    overflow: hidden;
+    height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+    margin-bottom: 0;
 }
 
 /* ── Calorie hero ── */
@@ -1304,37 +1334,10 @@ a:hover {
     }
 }
 
-/* ── New card pop-in animation ── */
-@keyframes cardPopIn {
-    from {
-        opacity: 0;
-        transform: translateY(-12px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-.history-entry.new-entry {
-    animation: cardPopIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+/* cardPopIn removed — morph animation handles this now */
 
 /* Stagger shift for existing history cards */
-.history-entry.stagger-shift {
-    animation: staggerShiftDown 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes staggerShiftDown {
-    from {
-        transform: translateY(-12px);
-        opacity: 0.5;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
+/* staggerShiftDown removed — FLIP-based Web Animations API handles this now */
 
 .history-thumb {
     width: 48px;
