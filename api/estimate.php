@@ -392,6 +392,13 @@ if ($provider === 'anthropic') {
         'model' => $anthropicModel,
         'max_tokens' => 1024,
         'system' => $systemPrompt,
+        'tools' => [
+            [
+                'type' => 'web_search_20250305',
+                'name' => 'web_search',
+                'max_uses' => 3,
+            ],
+        ],
         'messages' => [
             [
                 'role' => 'user',
