@@ -47,6 +47,24 @@ a:hover {
     vertical-align: middle;
 }
 
+/* ── Page entrance ── */
+
+/* Hide icons until font loads to prevent FOUT (flash of icon names).
+   Class is removed by JS after font loads — no transition needed. */
+.material-symbols-outlined {
+    opacity: 0;
+}
+.fonts-ready .material-symbols-outlined {
+    opacity: 1;
+}
+
+/* Hide entrance targets until JS animates them in via Web Animations API.
+   The .entrance class is removed after animation so nothing lingers
+   to conflict with the wildcard theme transition rule. */
+.entrance {
+    opacity: 0;
+}
+
 /* ── Floating controls ── */
 .floating-controls {
     position: fixed;

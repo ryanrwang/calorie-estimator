@@ -1,6 +1,38 @@
 (function () {
     'use strict';
 
+    // ── Page entrance ──
+    // Wait for icon font to load, then reveal icons and animate entrance
+    // targets in sequence using Web Animations API. After each animation
+    // finishes, the .entrance class is removed so nothing lingers to
+    // conflict with the wildcard theme transition rule.
+
+    var revealed = false;
+    function revealPage() {
+        if (revealed) return;
+        revealed = true;
+        document.documentElement.classList.add('fonts-ready');
+
+        var els = document.querySelectorAll('.entrance');
+        for (var i = 0; i < els.length; i++) {
+            (function (el, delay) {
+                var anim = el.animate([
+                    { opacity: 0, transform: 'translateY(12px)' },
+                    { opacity: 1, transform: 'none' }
+                ], { duration: 500, delay: delay, easing: 'cubic-bezier(0, 0, 0.2, 1)', fill: 'forwards' });
+                anim.finished.then(function () {
+                    el.classList.remove('entrance');
+                    anim.cancel();
+                });
+            })(els[i], i * 100);
+        }
+    }
+
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(revealPage);
+    }
+    setTimeout(revealPage, 2000);
+
     // ── Theme toggle ──
 
     var THEME_KEY = 'calorie-estimator-theme';

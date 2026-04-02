@@ -27,7 +27,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 </head>
 <body>
     <!-- Floating controls -->
-    <div class="floating-controls">
+    <div class="floating-controls entrance">
         <div class="settings-dropdown" id="settings-dropdown">
             <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings" data-tooltip="Settings">
                 <span class="material-symbols-outlined">settings</span>
@@ -64,7 +64,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
     <main class="app-main">
         <!-- Brand hero -->
-        <div class="page-hero">
+        <div class="page-hero entrance">
             <h1 class="brand-title">Carole</h1>
             <?php if ($mockMode): ?>
             <div class="mock-controls">
@@ -82,7 +82,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         <form id="estimate-form" class="estimate-form" autocomplete="off">
             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
-            <div class="input-card" id="input-card">
+            <div class="input-card entrance" id="input-card">
                 <textarea
                     id="food-input"
                     class="food-input"
@@ -188,7 +188,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         </section>
 
         <!-- Local history -->
-        <section id="history" class="history-section hidden">
+        <section id="history" class="history-section hidden entrance">
             <div id="history-list" class="history-list"></div>
         </section>
     </main>
