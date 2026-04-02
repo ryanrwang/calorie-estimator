@@ -27,39 +27,38 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 <body>
     <!-- Floating controls -->
     <div class="floating-controls">
-        <button id="theme-toggle" class="fab-btn" type="button" aria-label="Toggle dark mode">
-            <span class="material-symbols-outlined theme-icon">light_mode</span>
-        </button>
         <div class="settings-dropdown" id="settings-dropdown">
-            <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings">
+            <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings" data-tooltip="Settings">
                 <span class="material-symbols-outlined">settings</span>
             </button>
             <div class="settings-menu hidden" id="settings-menu">
+                <button type="button" class="settings-menu-item" id="settings-theme-toggle">
+                    <span class="material-symbols-outlined theme-icon">light_mode</span> <span id="settings-theme-label">Use dark mode</span>
+                </button>
+                <button type="button" class="settings-menu-item" id="settings-debug-toggle">
+                    <span class="material-symbols-outlined">bug_report</span> Debug mode
+                </button>
+                <div class="settings-menu-divider"></div>
+                <?php if ($loggedIn): ?>
+                <span class="settings-menu-username"><?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></span>
+                <a href="history.php" class="settings-menu-item">
+                    <span class="material-symbols-outlined">history</span> History
+                </a>
+                <?php endif; ?>
                 <button type="button" class="settings-menu-item settings-menu-danger" id="settings-clear-history">
                     <span class="material-symbols-outlined">delete_sweep</span> Clear history
                 </button>
-            </div>
-        </div>
-        <?php if ($loggedIn): ?>
-        <div class="profile-dropdown" id="profile-dropdown">
-            <button class="fab-btn" type="button" id="profile-btn" aria-label="Profile menu">
-                <span class="material-symbols-outlined">person</span>
-            </button>
-            <div class="profile-menu hidden" id="profile-menu">
-                <span class="profile-menu-username"><?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></span>
-                <a href="history.php" class="profile-menu-item">
-                    <span class="material-symbols-outlined">history</span> History
-                </a>
-                <a href="index.php?action=logout" class="profile-menu-item profile-menu-danger">
+                <?php if ($loggedIn): ?>
+                <a href="index.php?action=logout" class="settings-menu-item settings-menu-danger">
                     <span class="material-symbols-outlined">logout</span> Log out
                 </a>
+                <?php else: ?>
+                <button type="button" class="settings-menu-item" id="settings-login-btn">
+                    <span class="material-symbols-outlined">login</span> Log in
+                </button>
+                <?php endif; ?>
             </div>
         </div>
-        <?php else: ?>
-        <button type="button" class="fab-btn" id="login-open-btn" aria-label="Log in">
-            <span class="material-symbols-outlined">login</span>
-        </button>
-        <?php endif; ?>
     </div>
 
     <main class="app-main">
@@ -100,7 +99,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         </svg>
                         <span class="usage-ring-tooltip" id="compact-usage-tooltip"></span>
                     </div>
-                    <button type="button" class="compact-edit-btn" aria-label="Edit search">
+                    <button type="button" class="compact-edit-btn" aria-label="Edit search" data-tooltip="Edit">
                         <span class="material-symbols-outlined">edit</span>
                     </button>
                 </div>
@@ -113,7 +112,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 </div>
 
                 <div class="input-toolbar">
-                    <label class="toolbar-btn" aria-label="Upload a meal photo">
+                    <label class="toolbar-btn" aria-label="Upload a meal photo" data-tooltip="Photo">
                         <span class="material-symbols-outlined">photo_camera</span>
                         <input
                             type="file"
@@ -126,8 +125,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                     <?php if ($loggedIn): ?>
                     <div class="model-select" id="model-select">
-                        <button type="button" class="toolbar-btn model-select-trigger" id="model-select-trigger">
-                            <span class="material-symbols-outlined">tune</span>
+                        <button type="button" class="toolbar-btn model-select-trigger" id="model-select-trigger" data-tooltip="Model">
+                            <span class="material-symbols-outlined">chef_hat</span>
                             <span class="model-select-label" id="model-select-label">Flash</span>
                         </button>
                         <div class="model-dropdown hidden" id="model-dropdown">
@@ -149,7 +148,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                     <div class="toolbar-spacer"></div>
 
-                    <div id="usage-ring-wrap" class="usage-ring-wrap hidden">
+                    <div id="usage-ring-wrap" class="usage-ring-wrap">
                         <svg class="usage-ring" viewBox="0 0 24 24" width="24" height="24">
                             <circle class="usage-ring-track" cx="12" cy="12" r="10" />
                             <circle id="usage-ring-fill" class="usage-ring-fill" cx="12" cy="12" r="10" />
@@ -176,10 +175,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             <div id="results-beard" class="results-beard hidden">
                 <span id="results-beard-date" class="history-date"></span>
                 <div class="history-beard-actions">
-                    <button type="button" class="history-beard-btn" id="results-show-prompt-btn" aria-label="Show prompt">
+                    <button type="button" class="history-beard-btn" id="results-show-prompt-btn" aria-label="Show prompt" data-tooltip="Prompt">
                         <span class="material-symbols-outlined">description</span>
                     </button>
-                    <button type="button" class="history-beard-btn" id="results-archive-btn" aria-label="Archive">
+                    <button type="button" class="history-beard-btn" id="results-archive-btn" aria-label="Archive" data-tooltip="Archive">
                         <span class="material-symbols-outlined">archive</span>
                     </button>
                 </div>
@@ -262,6 +261,26 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         </div>
     </dialog>
     <?php endif; ?>
+
+    <dialog id="prompt-dialog" class="prompt-dialog">
+        <div class="prompt-dialog-content">
+            <div class="prompt-dialog-header">
+                <h2 class="prompt-dialog-title">Prompt</h2>
+                <button type="button" class="login-dialog-close" id="prompt-dialog-close" aria-label="Close">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div id="prompt-dialog-text" class="prompt-dialog-text"></div>
+            <div class="prompt-dialog-actions">
+                <button type="button" id="prompt-copy-btn" class="prompt-action-btn">
+                    <span class="material-symbols-outlined">content_copy</span> <span id="prompt-copy-label">Copy</span>
+                </button>
+                <button type="button" id="prompt-reprompt-btn" class="prompt-action-btn prompt-action-primary">
+                    <span class="material-symbols-outlined">refresh</span> Use as prompt
+                </button>
+            </div>
+        </div>
+    </dialog>
 
     <script>window.APP_AUTH = <?php echo json_encode($loggedIn); ?>;</script>
     <script>window.APP_CSRF = <?php echo json_encode($csrfToken); ?>;</script>

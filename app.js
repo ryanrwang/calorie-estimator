@@ -34,29 +34,14 @@
 
     function updateThemeIcon() {
         var icon = document.querySelector('.theme-icon');
+        var label = document.getElementById('settings-theme-label');
         if (!icon) return;
         var theme = document.documentElement.getAttribute('data-theme');
         icon.textContent = theme === 'dark' ? 'dark_mode' : 'light_mode';
+        if (label) label.textContent = theme === 'dark' ? 'Use light mode' : 'Use dark mode';
     }
 
     initTheme();
-
-    var themeBtn = document.getElementById('theme-toggle');
-    if (themeBtn) {
-        themeBtn.addEventListener('click', toggleTheme);
-    }
-
-    // ── Profile dropdown ──
-
-    var profileBtn = document.getElementById('profile-btn');
-    var profileMenu = document.getElementById('profile-menu');
-
-    if (profileBtn && profileMenu) {
-        profileBtn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            profileMenu.classList.toggle('hidden');
-        });
-    }
 
     // ── Model dropdown ──
 
@@ -69,8 +54,6 @@
         modelSelectTrigger.addEventListener('click', function (e) {
             e.stopPropagation();
             modelDropdown.classList.toggle('hidden');
-            // Close profile menu if open
-            if (profileMenu) profileMenu.classList.add('hidden');
         });
 
         var modelOptions = modelDropdown.querySelectorAll('.model-option');
@@ -100,13 +83,54 @@
         settingsBtn.addEventListener('click', function (e) {
             e.stopPropagation();
             settingsMenu.classList.toggle('hidden');
-            if (profileMenu) profileMenu.classList.add('hidden');
+        });
+    }
+
+    // Theme toggle in settings menu
+    var settingsThemeToggle = document.getElementById('settings-theme-toggle');
+    if (settingsThemeToggle) {
+        settingsThemeToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            toggleTheme();
+        });
+    }
+
+    // Debug mode toggle in settings menu
+    var settingsDebugToggle = document.getElementById('settings-debug-toggle');
+    if (settingsDebugToggle) {
+        var debugActive = false;
+        try { debugActive = localStorage.getItem('debugMode') === 'true'; } catch (e) { /* noop */ }
+        if (debugActive) {
+            document.body.classList.add('debug');
+            settingsDebugToggle.classList.add('active');
+            window.DEBUG = true;
+        }
+        settingsDebugToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            debugActive = !debugActive;
+            document.body.classList.toggle('debug', debugActive);
+            this.classList.toggle('active', debugActive);
+            window.DEBUG = debugActive;
+            try { localStorage.setItem('debugMode', debugActive ? 'true' : 'false'); } catch (e) { /* noop */ }
+        });
+    }
+
+    // Login button in settings menu (for logged-out users)
+    var settingsLoginBtn = document.getElementById('settings-login-btn');
+    var loginDialog = document.getElementById('login-dialog');
+    if (settingsLoginBtn && loginDialog) {
+        settingsLoginBtn.addEventListener('click', function () {
+            if (settingsMenu) settingsMenu.classList.add('hidden');
+            var loginError = document.getElementById('login-error');
+            if (loginError) { loginError.textContent = ''; loginError.classList.add('hidden'); }
+            loginDialog.showModal();
+            var passInput = document.getElementById('login-passphrase');
+            if (passInput) passInput.focus();
         });
     }
 
     // Close dropdowns on outside click
     document.addEventListener('click', function () {
-        if (profileMenu) profileMenu.classList.add('hidden');
         if (modelDropdown) modelDropdown.classList.add('hidden');
         if (settingsMenu) settingsMenu.classList.add('hidden');
     });
@@ -158,6 +182,13 @@
     var compactUsageTooltip = document.getElementById('compact-usage-tooltip');
     var RING_CIRCUMFERENCE = 2 * Math.PI * 10; // r=10 → ~62.83
 
+    // Initialize ring to empty state (visible but unfilled)
+    if (usageRingFill) {
+        usageRingFill.style.strokeDasharray = RING_CIRCUMFERENCE;
+        usageRingFill.style.strokeDashoffset = RING_CIRCUMFERENCE;
+    }
+    if (usageRingTooltip) usageRingTooltip.textContent = 'Usage';
+
     function applyRingState(wrap, fill, tooltip, count, limit, label, fraction) {
         if (tooltip) tooltip.textContent = label;
         if (limit > 0 && fill) {
@@ -187,12 +218,12 @@
 
         if (bucket === 'flash') {
             limit = 250;
-            label = count + ' / ' + limit + ' Flash today';
+            label = count + ' / ' + limit + ' today';
         } else if (bucket === 'pro') {
             limit = 100;
-            label = count + ' / ' + limit + ' Pro today';
+            label = count + ' / ' + limit + ' today';
         } else if (bucket === 'claude') {
-            label = count + ' Claude today';
+            label = count + ' today';
         }
 
         var fraction = limit > 0 ? Math.min(count / limit, 1) : 0;
@@ -306,24 +337,44 @@
             this.style.height = 'auto';
             this.style.height = Math.max(80, this.scrollHeight) + 'px';
 
-            // Typing glow pulse
+            // Typing glow — debounced fade (transition-based, no jarring restarts)
             if (inputCard && !inputCard.classList.contains('compact')) {
+                inputCard.classList.add('typing-glow');
                 inputCard.classList.remove('typing-fade');
-                // Re-trigger animation by removing and re-adding class
-                inputCard.classList.remove('typing');
-                void inputCard.offsetWidth; // force reflow to restart animation
-                inputCard.classList.add('typing');
                 clearTimeout(typingTimer);
                 typingTimer = setTimeout(function () {
-                    inputCard.classList.remove('typing');
                     inputCard.classList.add('typing-fade');
                     setTimeout(function () {
-                        inputCard.classList.remove('typing-fade');
+                        inputCard.classList.remove('typing-glow', 'typing-fade');
                     }, 500);
-                }, 600);
+                }, 400);
+            }
+        });
+
+        // Shift+Enter to submit
+        foodInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                if (submitBtn && !submitBtn.disabled) {
+                    submitBtn.click();
+                }
             }
         });
     }
+
+    // Show Shift+Enter tooltip on submit button while Shift is held
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Shift' && foodInput && foodInput === document.activeElement && submitBtn) {
+            submitBtn.setAttribute('data-tooltip', 'Shift + Enter');
+            submitBtn.classList.add('tooltip-visible');
+        }
+    });
+    document.addEventListener('keyup', function (e) {
+        if (e.key === 'Shift' && submitBtn) {
+            submitBtn.classList.remove('tooltip-visible');
+            submitBtn.removeAttribute('data-tooltip');
+        }
+    });
 
     // Track last payload for retry
     var lastPayload = null;
@@ -591,21 +642,66 @@
         });
     }
 
+    // ── Prompt dialog ──
+
+    var promptDialog = document.getElementById('prompt-dialog');
+    var promptDialogText = document.getElementById('prompt-dialog-text');
+    var promptDialogClose = document.getElementById('prompt-dialog-close');
+    var promptCopyBtn = document.getElementById('prompt-copy-btn');
+    var promptCopyLabel = document.getElementById('prompt-copy-label');
+    var promptRepromptBtn = document.getElementById('prompt-reprompt-btn');
+    var activePromptText = '';
+
+    function openPromptDialog(text) {
+        if (!promptDialog || !text) return;
+        activePromptText = text;
+        promptDialogText.textContent = text;
+        if (promptCopyLabel) promptCopyLabel.textContent = 'Copy';
+        promptDialog.showModal();
+    }
+
+    if (promptDialogClose && promptDialog) {
+        promptDialogClose.addEventListener('click', function () {
+            promptDialog.close();
+        });
+    }
+
+    if (promptDialog) {
+        promptDialog.addEventListener('click', function (e) {
+            if (e.target === promptDialog) promptDialog.close();
+        });
+    }
+
+    if (promptCopyBtn) {
+        promptCopyBtn.addEventListener('click', function () {
+            if (!activePromptText) return;
+            navigator.clipboard.writeText(activePromptText).then(function () {
+                if (promptCopyLabel) {
+                    promptCopyLabel.textContent = 'Copied!';
+                    setTimeout(function () { promptCopyLabel.textContent = 'Copy'; }, 1500);
+                }
+            });
+        });
+    }
+
+    if (promptRepromptBtn) {
+        promptRepromptBtn.addEventListener('click', function () {
+            if (!activePromptText || !foodInput) return;
+            if (promptDialog) promptDialog.close();
+            expandInput();
+            foodInput.value = activePromptText;
+            foodInput.style.height = 'auto';
+            foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
+            foodInput.focus();
+        });
+    }
+
     // ── Results beard actions ──
 
     if (resultsPromptBtn) {
         resultsPromptBtn.addEventListener('click', function () {
-            var existing = resultsSection.querySelector('.results-prompt');
-            if (existing) {
-                existing.remove();
-                this.classList.remove('active');
-            } else if (currentResultPrompt) {
-                var div = document.createElement('div');
-                div.className = 'results-prompt history-prompt';
-                div.textContent = currentResultPrompt;
-                // Insert before the beard
-                resultsBeard.parentNode.insertBefore(div, resultsBeard);
-                this.classList.add('active');
+            if (currentResultPrompt) {
+                openPromptDialog(currentResultPrompt);
             }
         });
     }
@@ -1180,10 +1276,10 @@
         h += '<span class="history-date">' + escapeHtml(dateStr + ' ' + timeStr) + '</span>';
         h += '<div class="history-beard-actions">';
         if (entry.input_text) {
-            h += '<button type="button" class="history-beard-btn history-show-prompt-btn" data-entry-index="' + i + '" aria-label="Show prompt">';
+            h += '<button type="button" class="history-beard-btn history-show-prompt-btn" data-entry-index="' + i + '" aria-label="Show prompt" data-tooltip="Prompt">';
             h += '<span class="material-symbols-outlined">description</span></button>';
         }
-        h += '<button type="button" class="history-beard-btn history-archive-btn" data-entry-index="' + i + '" aria-label="Archive">';
+        h += '<button type="button" class="history-beard-btn history-archive-btn" data-entry-index="' + i + '" aria-label="Archive" data-tooltip="Archive">';
         h += '<span class="material-symbols-outlined">archive</span></button>';
         h += '</div>';
         h += '</div>';
@@ -1213,10 +1309,11 @@
         if (promptBtn) {
             promptBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                var idx = this.getAttribute('data-entry-index');
-                var prompt = entryEl.querySelector('[data-prompt-index="' + idx + '"]');
-                if (prompt) prompt.classList.toggle('hidden');
-                this.classList.toggle('active');
+                var idx = parseInt(this.getAttribute('data-entry-index'), 10);
+                var history = getHistory();
+                if (history[idx] && history[idx].input_text) {
+                    openPromptDialog(history[idx].input_text);
+                }
             });
         }
 
@@ -1497,8 +1594,7 @@
 
     // ── Login dialog ──
 
-    var loginDialog = document.getElementById('login-dialog');
-    var loginOpenBtn = document.getElementById('login-open-btn');
+    if (!loginDialog) loginDialog = document.getElementById('login-dialog');
     var loginCloseBtn = document.getElementById('login-close-btn');
     var loginError = document.getElementById('login-error');
     var loginStepPassphrase = document.getElementById('login-step-passphrase');
@@ -1522,14 +1618,6 @@
         if (!loginError) return;
         loginError.textContent = '';
         loginError.classList.add('hidden');
-    }
-
-    if (loginOpenBtn && loginDialog) {
-        loginOpenBtn.addEventListener('click', function () {
-            hideLoginError();
-            loginDialog.showModal();
-            if (loginPassphraseInput) loginPassphraseInput.focus();
-        });
     }
 
     if (loginCloseBtn && loginDialog) {

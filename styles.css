@@ -96,67 +96,6 @@ a:hover {
     text-decoration: none;
 }
 
-/* ── Profile dropdown ── */
-.profile-dropdown {
-    position: relative;
-}
-
-.profile-menu {
-    position: absolute;
-    top: calc(100% + var(--spacing-sm));
-    right: 0;
-    min-width: 180px;
-    padding: var(--spacing-sm);
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border-default);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.profile-menu-username {
-    display: block;
-    padding: var(--spacing-sm) var(--spacing-sm);
-    font-size: var(--typography-sm-fontSize);
-    font-weight: var(--typography-xl-fontWeight);
-    color: var(--color-text-primary);
-    border-bottom: 1px solid var(--color-border-default);
-    margin-bottom: var(--spacing-xs);
-}
-
-.profile-menu-item {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-sm);
-    font-size: var(--typography-sm-fontSize);
-    color: var(--color-text-secondary);
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    transition: background-color var(--transition-fast);
-}
-
-.profile-menu-item:hover {
-    background-color: var(--color-interactive-hover);
-    color: var(--color-text-primary);
-    text-decoration: none;
-}
-
-.profile-menu-item .material-symbols-outlined {
-    font-size: 18px;
-    color: var(--color-text-tertiary);
-}
-
-.profile-menu-danger:hover {
-    color: var(--color-action-danger);
-}
-
-.profile-menu-danger:hover .material-symbols-outlined {
-    color: var(--color-action-danger);
-}
-
 /* ── Settings dropdown ── */
 .settings-dropdown {
     position: relative;
@@ -192,12 +131,14 @@ a:hover {
     border-radius: var(--radius-md);
     cursor: pointer;
     text-align: left;
+    text-decoration: none;
     transition: background-color var(--transition-fast);
 }
 
 .settings-menu-item:hover {
     background-color: var(--color-interactive-hover);
     color: var(--color-text-primary);
+    text-decoration: none;
 }
 
 .settings-menu-item .material-symbols-outlined {
@@ -211,6 +152,66 @@ a:hover {
 
 .settings-menu-danger:hover .material-symbols-outlined {
     color: var(--color-action-danger);
+}
+
+.settings-menu-divider {
+    height: 1px;
+    background-color: var(--color-border-default);
+    margin: var(--spacing-xs) 0;
+}
+
+.settings-menu-username {
+    display: block;
+    padding: var(--spacing-sm) var(--spacing-sm);
+    font-size: var(--typography-sm-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-text-primary);
+}
+
+.settings-menu-item.active .material-symbols-outlined {
+    color: var(--color-action-primary);
+}
+
+/* ── Tooltip system ── */
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: var(--typography-xs-fontSize);
+    font-weight: var(--typography-base-fontWeight);
+    line-height: 1;
+    color: var(--color-action-primaryText);
+    background-color: var(--color-text-primary);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: 200;
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
+[data-tooltip].tooltip-visible::after {
+    opacity: 1;
+}
+
+/* Settings FAB tooltip appears to the left */
+.floating-controls [data-tooltip]::after {
+    bottom: auto;
+    left: auto;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 /* ── Main ── */
@@ -299,34 +300,24 @@ a:hover {
     }
 }
 
-/* Typing glow shockwave */
-.estimate-form .input-card.typing,
-.estimate-form .input-card.typing:focus-within,
-.estimate-form .input-card.typing:hover:not(.compact) {
+/* Typing glow — transition-based for smooth blending */
+/* Must beat :focus-within specificity since textarea is focused while typing */
+.estimate-form .input-card.typing-glow,
+.estimate-form .input-card.typing-glow:focus-within,
+.estimate-form .input-card.typing-glow:focus-within:hover:not(.compact) {
     border-color: var(--color-border-focus);
-    animation: typingGlow 0.8s ease-out both !important;
+    box-shadow: 0 0 0 6px rgba(217, 119, 6, 0.3),
+                0 0 24px rgba(217, 119, 6, 0.15),
+                var(--shadow-lg);
+    transition: box-shadow 0.15s ease-out, border-color 0.15s ease-out;
+    animation: none;
 }
 
-@keyframes typingGlow {
-    0% {
-        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.3), 0 0 0px rgba(217, 119, 6, 0), var(--shadow-md);
-    }
-    30% {
-        box-shadow: 0 0 0 6px rgba(217, 119, 6, 0.25), 0 0 20px rgba(217, 119, 6, 0.15), var(--shadow-lg);
-    }
-    60% {
-        box-shadow: 0 0 0 12px rgba(217, 119, 6, 0.08), 0 0 40px rgba(217, 119, 6, 0.06), var(--shadow-lg);
-    }
-    100% {
-        box-shadow: 0 0 0 16px rgba(217, 119, 6, 0), 0 0 50px rgba(217, 119, 6, 0), var(--shadow-md);
-    }
-}
-
-.estimate-form .input-card.typing-fade,
-.estimate-form .input-card.typing-fade:focus-within {
-    transition: box-shadow 0.4s ease-out,
-                border-color 0.4s ease-out;
+.estimate-form .input-card.typing-glow.typing-fade,
+.estimate-form .input-card.typing-glow.typing-fade:focus-within {
     box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15), var(--shadow-md);
+    transition: box-shadow 0.6s ease-out, border-color 0.6s ease-out;
+    animation: none;
 }
 
 .input-card.collapsed {
@@ -514,7 +505,7 @@ a:hover {
 
 .model-dropdown {
     position: absolute;
-    bottom: calc(100% + var(--spacing-sm));
+    top: calc(100% + var(--spacing-sm));
     left: 0;
     min-width: 180px;
     padding: var(--spacing-sm);
@@ -609,6 +600,10 @@ a:hover {
 .submit-pill:disabled {
     opacity: var(--opacity-disabled);
     cursor: not-allowed;
+}
+
+.input-toolbar > .submit-pill {
+    margin-left: var(--spacing-sm);
 }
 
 /* ── Spinner ── */
@@ -1263,6 +1258,11 @@ a:hover {
     border-top-color: var(--color-border-default);
 }
 
+/* Allow tooltips to escape beard overflow */
+.history-entry.expanded .history-entry-beard {
+    overflow: visible;
+}
+
 /* Slightly smaller buttons so they breathe within the beard */
 .history-entry-beard .history-beard-btn {
     width: 28px;
@@ -1297,7 +1297,7 @@ a:hover {
 }
 
 .history-beard-btn:hover {
-    background-color: var(--color-interactive-hover);
+    background-color: var(--color-interactive-hoverStrong);
     color: var(--color-text-secondary);
 }
 
@@ -1514,6 +1514,101 @@ a:hover {
 .login-dialog-close:hover {
     background-color: var(--color-interactive-hover);
     color: var(--color-text-primary);
+}
+
+/* ── Prompt dialog ── */
+.prompt-dialog {
+    border: none;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    padding: 0;
+    max-width: 400px;
+    width: calc(100% - var(--spacing-lg));
+    box-shadow: var(--shadow-xl);
+    margin: auto;
+}
+
+.prompt-dialog::backdrop {
+    background-color: var(--color-bg-overlay);
+}
+
+.prompt-dialog-content {
+    padding: var(--spacing-lg);
+}
+
+.prompt-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+.prompt-dialog-title {
+    font-size: var(--typography-xl-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+}
+
+.prompt-dialog-text {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-secondary);
+    background-color: var(--color-bg-page);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-style: italic;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.prompt-dialog-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.prompt-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    height: 40px;
+    padding: 0 var(--spacing-md);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    font-weight: var(--typography-xl-fontWeight);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.prompt-action-btn:hover {
+    background-color: var(--color-interactive-hover);
+    color: var(--color-text-primary);
+}
+
+.prompt-action-btn .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.prompt-action-primary {
+    background-color: var(--color-action-primary);
+    color: var(--color-action-primaryText);
+    border-color: var(--color-action-primary);
+}
+
+.prompt-action-primary:hover {
+    background-color: var(--color-action-primaryHover);
+    color: var(--color-action-primaryText);
 }
 
 /* ── Login page ── */
