@@ -92,6 +92,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     aria-label="Describe what you ate"
                 ></textarea>
 
+                <div class="compact-text-overlay" id="compact-text-overlay"></div>
                 <div class="compact-actions" id="compact-actions">
                     <div id="compact-usage-ring" class="usage-ring-wrap hidden">
                         <svg class="usage-ring" viewBox="0 0 24 24" width="24" height="24">
