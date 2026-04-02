@@ -95,10 +95,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 <div class="compact-text-overlay" id="compact-text-overlay"></div>
                 <div class="compact-actions" id="compact-actions">
                     <div id="compact-usage-ring" class="usage-ring-wrap">
-                        <svg class="usage-ring" viewBox="0 0 24 24" width="24" height="24">
-                            <circle class="usage-ring-track" cx="12" cy="12" r="10" />
-                            <circle class="usage-ring-fill compact-ring-fill" cx="12" cy="12" r="10" />
+                        <svg class="usage-ring" viewBox="0 0 32 32" width="32" height="32">
+                            <circle class="usage-ring-track" cx="16" cy="16" r="13" />
+                            <circle class="usage-ring-fill compact-ring-fill" cx="16" cy="16" r="13" />
                         </svg>
+                        <span class="usage-ring-count compact-ring-count"></span>
                         <span class="usage-ring-tooltip" id="compact-usage-tooltip"></span>
                     </div>
                     <button type="button" class="compact-clear-btn" aria-label="Restart" data-tooltip="Restart">
@@ -151,10 +152,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     <div class="toolbar-spacer"></div>
 
                     <div id="usage-ring-wrap" class="usage-ring-wrap">
-                        <svg class="usage-ring" viewBox="0 0 24 24" width="24" height="24">
-                            <circle class="usage-ring-track" cx="12" cy="12" r="10" />
-                            <circle id="usage-ring-fill" class="usage-ring-fill" cx="12" cy="12" r="10" />
+                        <svg class="usage-ring" viewBox="0 0 32 32" width="32" height="32">
+                            <circle class="usage-ring-track" cx="16" cy="16" r="13" />
+                            <circle id="usage-ring-fill" class="usage-ring-fill" cx="16" cy="16" r="13" />
                         </svg>
+                        <span id="usage-ring-count" class="usage-ring-count"></span>
                         <span id="usage-ring-tooltip" class="usage-ring-tooltip"></span>
                     </div>
 

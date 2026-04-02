@@ -113,6 +113,8 @@
         },
 
         fontSize: {
+            '3xs': '10px',
+            '2xs': '11px',
             xs:   '12px',
             sm:   '14px',
             base: '16px',
@@ -315,6 +317,8 @@
         },
 
         typography: {
+            '3xs': { fontSize: primitives.fontSize['3xs'], lineHeight: primitives.lineHeight.normal, fontWeight: primitives.fontWeight.normal },
+            '2xs': { fontSize: primitives.fontSize['2xs'], lineHeight: primitives.lineHeight.normal, fontWeight: primitives.fontWeight.normal },
             xs:   { fontSize: primitives.fontSize.xs,   lineHeight: primitives.lineHeight.normal, fontWeight: primitives.fontWeight.normal },
             sm:   { fontSize: primitives.fontSize.sm,   lineHeight: primitives.lineHeight.normal, fontWeight: primitives.fontWeight.normal },
             base: { fontSize: primitives.fontSize.base, lineHeight: primitives.lineHeight.normal, fontWeight: primitives.fontWeight.normal },
