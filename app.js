@@ -358,6 +358,9 @@
 
         var startHeight = inputCard.offsetHeight;
 
+        // Apply compact layout. The class change is instant, but the
+        // Web Animations API first keyframe (startHeight) overrides
+        // the rendered height on the same frame — no visible jump.
         inputCard.classList.add('compact');
         if (foodInput) foodInput.setAttribute('readonly', '');
 
@@ -378,102 +381,68 @@
         animateCardHeight(startHeight, endHeight);
     }
 
-    // FLIP-based stagger: capture positions before layout change, then animate
-    // from old position to new position with staggered delays.
-    // Call captureHistoryPositions() BEFORE the DOM change, then
-    // animateHistoryToNewPositions() AFTER.
-    function captureHistoryPositions() {
-        var historyList = document.getElementById('history-list');
-        if (!historyList) return {};
-        var positions = {};
-        var allEntries = historyList.querySelectorAll('.history-entry');
-        for (var i = 0; i < allEntries.length; i++) {
-            var ts = allEntries[i].getAttribute('data-timestamp');
-            if (ts) {
-                positions[ts] = allEntries[i].getBoundingClientRect();
-            }
-        }
-        return positions;
-    }
-
-    function animateHistoryToNewPositions(oldPositions) {
+    // Tracked-treads shift: animate the ENTIRE history list container as one unit.
+    // The list starts shifted up by one card slot, then glides down — like a
+    // conveyor belt or tank treads. The newest card fades in as it enters view.
+    //
+    // This avoids all per-card FLIP/transition bugs because there's only ONE
+    // animation on ONE element (the container).
+    function shiftHistoryDown() {
         var historyList = document.getElementById('history-list');
         if (!historyList) return;
-        // Visible domino stagger: 120ms between each card at MORPH_DURATION=800
-        var staggerDelay = Math.round(MORPH_DURATION * 0.15);
-        var shiftDuration = Math.round(MORPH_DURATION * 0.5);
-        var allEntries = historyList.querySelectorAll('.history-entry');
-        var order = 0;
 
-        for (var i = 0; i < allEntries.length; i++) {
-            var entry = allEntries[i];
-            var ts = entry.getAttribute('data-timestamp');
-            if (!ts || !oldPositions[ts]) continue; // new card, skip
+        var dur = Math.round(MORPH_DURATION * 0.65); // ~520ms — slow enough to read
+        var easing = 'cubic-bezier(0.22, 1, 0.36, 1)'; // slight overshoot for physical feel
 
-            var oldRect = oldPositions[ts];
-            var newRect = entry.getBoundingClientRect();
-            var dy = oldRect.top - newRect.top;
+        var firstEntry = historyList.querySelector('.history-entry');
+        if (!firstEntry) return;
 
-            if (Math.abs(dy) < 1) continue; // didn't move
+        // One slot = card height + flex gap
+        var slotHeight = firstEntry.offsetHeight + 8;
 
-            // Check if this card is crossing the stack boundary
-            // (it was a direct child before but now it's inside .history-stack)
-            var isNowStacked = !!entry.closest('.history-stack');
-            var wasDirectChild = !oldPositions[ts]._stacked;
+        // Clip overflow so cards sliding from above are hidden until in-bounds
+        historyList.style.overflow = 'clip';
 
-            if (isNowStacked && wasDirectChild) {
-                // Shrink-and-tuck animation
-                var tuckDuration = Math.round(MORPH_DURATION * 0.5);
-                entry.animate([
-                    { transform: 'translateY(' + dy + 'px) scaleX(1)', opacity: 1 },
-                    { transform: 'translateY(0) scaleX(0.96)', opacity: 0.4 }
-                ], {
-                    duration: tuckDuration,
-                    delay: order * staggerDelay,
-                    easing: ANIM_EASING,
-                });
-            } else {
-                // Normal FLIP shift
-                entry.animate([
-                    { transform: 'translateY(' + dy + 'px)' },
-                    { transform: 'translateY(0)' }
-                ], {
-                    duration: shiftDuration,
-                    delay: order * staggerDelay,
-                    easing: ANIM_EASING,
-                });
-            }
-            order++;
-        }
+        // Animate the whole list sliding down from one slot above
+        var listAnim = historyList.animate([
+            { transform: 'translateY(' + (-slotHeight) + 'px)' },
+            { transform: 'translateY(0)' }
+        ], { duration: dur, easing: easing });
+
+        listAnim.onfinish = function () {
+            historyList.style.overflow = '';
+        };
+
+        // Newest card fades in as it slides into view
+        firstEntry.animate([
+            { opacity: 0 },
+            { opacity: 1 }
+        ], { duration: Math.round(dur * 0.7), easing: 'ease-out' });
     }
 
-    // Backwards-compatible wrapper for simple cases (first submit, no FLIP needed)
-    function staggerHistoryDown(startIndex) {
+    // First-submit nudge: same container animation, smaller displacement.
+    function nudgeHistoryDown() {
         var historyList = document.getElementById('history-list');
         if (!historyList) return;
         var entries = historyList.querySelectorAll(':scope > .history-entry:not(.morph-target)');
-        var staggerDelay = Math.round(MORPH_DURATION * 0.15);
-        var shiftDuration = Math.round(MORPH_DURATION * 0.5);
-        var max = Math.min(entries.length, 8);
-        for (var i = startIndex || 0; i < max; i++) {
-            (function (entry, delay) {
-                entry.animate([
-                    { transform: 'translateY(-20px)', opacity: 0.5 },
-                    { transform: 'translateY(0)', opacity: 1 }
-                ], {
-                    duration: shiftDuration,
-                    delay: delay,
-                    easing: ANIM_EASING,
-                });
-            })(entries[i], i * staggerDelay);
+        if (entries.length === 0) return;
+
+        var dur = Math.round(MORPH_DURATION * 0.35);
+        var easing = 'cubic-bezier(0.0, 0, 0.2, 1)';
+
+        // Subtle downward nudge for existing cards
+        for (var i = 0; i < Math.min(entries.length, 8); i++) {
+            entries[i].animate([
+                { transform: 'translateY(-20px)', opacity: 0.5 },
+                { transform: 'translateY(0)', opacity: 1 }
+            ], { duration: dur, easing: easing });
         }
     }
 
     var loadingGrowAnim = null;
 
-    function beginLoading(afterCollapse) {
+    function beginLoading() {
         clearResultsAnimation();
-        if (!afterCollapse) compactInput();
         resultsContent.innerHTML = '';
         if (calorieHero) calorieHero.classList.add('hidden');
         if (resultsBeard) resultsBeard.classList.add('hidden');
@@ -508,13 +477,13 @@
             compactInput();
 
             morphResultToHistory(function () {
-                beginLoading(true);
+                beginLoading();
             });
         } else {
-            // First submit — stagger existing history down, then show loading
+            // First submit — compact input, nudge history, show loading
             compactInput();
-            staggerHistoryDown(0);
-            beginLoading(false);
+            nudgeHistoryDown();
+            beginLoading();
         }
 
         submitBtn.disabled = true;
@@ -828,23 +797,58 @@
 
             isCompactClickable = false;
 
-            // Step 1: Expand input first
+            // Step 1: Expand input
             expandInput();
             lastResultText = '';
 
-            // Step 2: Morph results into history card (sets resultsShowing=false internally)
-            morphResultToHistory(function () {
-                if (loadingState) loadingState.classList.add('hidden');
+            // Step 2: Quick swap — skip the slow Phase 1 fade/collapse.
+            // Just hide results and shift history down.
+            quickMorphToHistory();
 
-                if (foodInput) {
-                    setTimeout(function () {
-                        foodInput.focus();
-                        foodInput.style.height = 'auto';
-                        foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
-                    }, 100);
-                }
-            });
+            if (loadingState) loadingState.classList.add('hidden');
+            if (foodInput) {
+                setTimeout(function () {
+                    foodInput.focus();
+                    foodInput.style.height = 'auto';
+                    foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
+                }, 100);
+            }
         });
+    }
+
+    // Quick morph for edit-expand: skip the slow Phase 1 fade/collapse.
+    // Just hide results, render history, and do the tracked-treads shift.
+    // No content fade-out, no height collapse — instant swap + slide.
+    function quickMorphToHistory() {
+        if (!resultsSection || resultsSection.classList.contains('hidden')) return;
+
+        // Cancel any running collapse animation
+        if (resultsCollapseAnim) {
+            resultsCollapseAnim.cancel();
+            resultsCollapseAnim = null;
+        }
+
+        // Hide results immediately
+        resultsSection.classList.add('hidden');
+        resultsSection.classList.remove('morphing');
+        resultsSection.style.height = '';
+        resultsSection.style.padding = '';
+        resultsSection.style.borderRadius = '';
+        resultsSection.style.opacity = '';
+        resultsSection.style.transform = '';
+        // Clean content states
+        [calorieHero, resultsContent, resultsBeard].forEach(function (el) {
+            if (el) { el.style.transition = ''; el.style.opacity = ''; }
+        });
+        var oldSummary = resultsSection.querySelector('.results-morph-summary');
+        if (oldSummary) oldSummary.remove();
+
+        // Render history and animate
+        resultsShowing = false;
+        renderHistory();
+        var historySection = document.getElementById('history');
+        if (historySection) historySection.classList.remove('hidden');
+        shiftHistoryDown();
     }
 
     var resultsCollapseAnim = null;
@@ -908,20 +912,9 @@
             easing: ANIM_EASING,
         });
 
-        // ── Phase 2: At collapse end, FLIP into history ──
+        // ── Phase 2: At collapse end, swap into history and animate ──
         resultsCollapseAnim.onfinish = function () {
             resultsCollapseAnim = null;
-
-            // FLIP: capture old positions
-            var oldPositions = captureHistoryPositions();
-            var oldStackedEntries = historyList ? historyList.querySelectorAll('.history-stack .history-entry') : [];
-            for (var s = 0; s < oldStackedEntries.length; s++) {
-                var sts = oldStackedEntries[s].getAttribute('data-timestamp');
-                if (sts && oldPositions[sts]) oldPositions[sts]._stacked = true;
-            }
-
-            // Capture results section position (where new card animates from)
-            var resultsRect = resultsSection.getBoundingClientRect();
 
             // Hide results, clean up
             resultsSection.classList.add('hidden');
@@ -935,30 +928,16 @@
                 contentEls[c].style.opacity = '';
             }
 
-            // Render history with the new card
+            // Render history with the new card at the top
             resultsShowing = false;
             renderHistory();
             if (historySection) historySection.classList.remove('hidden');
 
-            // FLIP: animate existing cards from old → new positions
-            animateHistoryToNewPositions(oldPositions);
+            // Tracked-treads: whole list slides down one slot, new card fades in
+            shiftHistoryDown();
 
-            // Animate newest card from results position
-            var newestCard = historyList ? historyList.querySelector('.history-entry') : null;
-            if (newestCard) {
-                var newRect = newestCard.getBoundingClientRect();
-                var dy = resultsRect.top - newRect.top;
-                var shiftDuration = Math.round(MORPH_DURATION * 0.5);
-                newestCard.animate([
-                    { transform: 'translateY(' + dy + 'px)', opacity: 0.6 },
-                    { transform: 'translateY(0)', opacity: 1 }
-                ], {
-                    duration: shiftDuration,
-                    easing: ANIM_EASING,
-                });
-            }
-
-            setTimeout(callback, Math.round(MORPH_DURATION * 0.55));
+            // Wait for shift animation to finish before showing loading
+            setTimeout(callback, Math.round(MORPH_DURATION * 0.7));
         };
     }
 
