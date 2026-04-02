@@ -87,39 +87,59 @@ If the image is unclear or you genuinely cannot identify the food, say so and as
 Do not add health advice, dietary recommendations, or commentary unless the user asks.
 PROMPT;
 
-// --- API usage counter ---
+// --- API usage counter (per-model tracking) ---
 
 $usageFile = __DIR__ . '/../data/api_usage.json';
+$ALL_MODELS = ['flash', 'flash-thinking', 'pro', 'sonnet', 'opus'];
+
+function empty_usage() {
+    global $ALL_MODELS;
+    $u = ['date' => ''];
+    foreach ($ALL_MODELS as $m) $u[$m] = 0;
+    return $u;
+}
 
 function read_usage() {
     global $usageFile;
     $fp = fopen($usageFile, 'c+');
-    if (!$fp) return ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    if (!$fp) return empty_usage();
     flock($fp, LOCK_SH);
     $contents = stream_get_contents($fp);
     flock($fp, LOCK_UN);
     fclose($fp);
     $data = json_decode($contents, true);
-    if (!$data) return ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    if (!$data) return empty_usage();
+    // Backfill any missing model keys (migration from old bucket format)
+    $base = empty_usage();
+    foreach ($base as $k => $v) {
+        if (!isset($data[$k])) $data[$k] = $v;
+    }
     return $data;
 }
 
-function increment_usage($bucket) {
+function increment_usage($modelId) {
     global $usageFile;
     $fp = fopen($usageFile, 'c+');
-    if (!$fp) return ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    if (!$fp) return empty_usage();
     flock($fp, LOCK_EX);
     $contents = stream_get_contents($fp);
     $data = json_decode($contents, true);
-    if (!$data) $data = ['date' => '', 'flash' => 0, 'pro' => 0, 'claude' => 0];
+    if (!$data) $data = empty_usage();
 
     // Reset if new day (Pacific time)
     $today = (new DateTime('now', new DateTimeZone('America/Los_Angeles')))->format('Y-m-d');
     if (!isset($data['date']) || $data['date'] !== $today) {
-        $data = ['date' => $today, 'flash' => 0, 'pro' => 0, 'claude' => 0];
+        $data = empty_usage();
+        $data['date'] = $today;
     }
 
-    $data[$bucket] = isset($data[$bucket]) ? $data[$bucket] + 1 : 1;
+    // Backfill missing keys
+    $base = empty_usage();
+    foreach ($base as $k => $v) {
+        if (!isset($data[$k])) $data[$k] = $v;
+    }
+
+    $data[$modelId] = isset($data[$modelId]) ? $data[$modelId] + 1 : 1;
 
     ftruncate($fp, 0);
     rewind($fp);
@@ -131,24 +151,26 @@ function increment_usage($bucket) {
 }
 
 function get_usage_for_response() {
+    global $ALL_MODELS;
     $data = read_usage();
     $today = (new DateTime('now', new DateTimeZone('America/Los_Angeles')))->format('Y-m-d');
     if (!isset($data['date']) || $data['date'] !== $today) {
-        return ['flash' => 0, 'pro' => 0, 'claude' => 0];
+        $result = [];
+        foreach ($ALL_MODELS as $m) $result[$m] = 0;
+        return $result;
     }
-    return [
-        'flash' => isset($data['flash']) ? (int)$data['flash'] : 0,
-        'pro' => isset($data['pro']) ? (int)$data['pro'] : 0,
-        'claude' => isset($data['claude']) ? (int)$data['claude'] : 0,
-    ];
+    $result = [];
+    foreach ($ALL_MODELS as $m) {
+        $result[$m] = isset($data[$m]) ? (int)$data[$m] : 0;
+    }
+    return $result;
 }
 
-// Map model to usage bucket
-function get_usage_bucket($modelId) {
-    if ($modelId === 'flash' || $modelId === 'flash-thinking') return 'flash';
-    if ($modelId === 'pro') return 'pro';
-    if ($modelId === 'sonnet' || $modelId === 'opus') return 'claude';
-    return 'flash';
+function get_usage_limits() {
+    global $config;
+    return isset($config['usage_limits']) ? $config['usage_limits'] : [
+        'flash' => 200, 'flash-thinking' => 200, 'pro' => 80, 'sonnet' => 50, 'opus' => 20,
+    ];
 }
 
 // --- Provider routing ---
@@ -193,39 +215,48 @@ if (is_mock_mode()) {
         save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
     }
 
+    // Return real usage + a mock_bump for the client to accumulate locally
     json_response([
-        'result' => $resultText,
-        'model'  => $modelId,
-        'usage'  => ['flash' => 0, 'pro' => 0, 'claude' => 0],
+        'result'    => $resultText,
+        'model'     => $modelId,
+        'usage'     => get_usage_for_response(),
+        'limits'    => get_usage_limits(),
+        'mock_bump' => rand(1, 8),
     ]);
 }
 
-// --- Quota check (Gemini only) ---
+// --- Quota check (all models, when hard stop is enabled) ---
 
-$usageBucket = get_usage_bucket($modelId);
 $currentUsage = get_usage_for_response();
+$usageLimits = get_usage_limits();
+$hardStop = isset($config['usage_hard_stop']) ? $config['usage_hard_stop'] : true;
 
-if ($provider === 'gemini') {
-    $limits = ['flash' => 250, 'pro' => 100];
-    $limit = isset($limits[$usageBucket]) ? $limits[$usageBucket] : 250;
-    $count = isset($currentUsage[$usageBucket]) ? $currentUsage[$usageBucket] : 0;
+if ($hardStop) {
+    $limit = isset($usageLimits[$modelId]) ? $usageLimits[$modelId] : 0;
+    $count = isset($currentUsage[$modelId]) ? $currentUsage[$modelId] : 0;
 
-    if ($count >= $limit) {
-        // Suggest alternatives
+    if ($limit > 0 && $count >= $limit) {
+        // Suggest alternatives that still have quota
+        $modelNames = [
+            'flash' => 'Flash', 'flash-thinking' => 'Flash Thinking',
+            'pro' => 'Pro', 'sonnet' => 'Sonnet', 'opus' => 'Opus',
+        ];
         $suggestions = [];
-        if ($usageBucket === 'flash' && $currentUsage['pro'] < 100) {
-            $suggestions[] = 'Pro';
-        }
-        if ($usageBucket === 'pro' && $currentUsage['flash'] < 250) {
-            $suggestions[] = 'Flash';
-        }
-        if (is_logged_in()) {
-            $suggestions[] = 'Claude Sonnet or Opus';
+        foreach ($usageLimits as $altModel => $altLimit) {
+            if ($altModel === $modelId) continue;
+            $altCount = isset($currentUsage[$altModel]) ? $currentUsage[$altModel] : 0;
+            if ($altCount < $altLimit) {
+                // Skip Claude models for logged-out users
+                if (($altModel === 'sonnet' || $altModel === 'opus') && !is_logged_in()) continue;
+                $suggestions[] = isset($modelNames[$altModel]) ? $modelNames[$altModel] : $altModel;
+            }
         }
         $altMsg = count($suggestions) > 0 ? ' Try ' . implode(' or ', $suggestions) . '.' : '';
+        $displayName = isset($modelNames[$modelId]) ? $modelNames[$modelId] : $modelId;
         json_response([
-            'error' => 'Quota reached for ' . ($usageBucket === 'flash' ? 'Flash' : 'Pro') . ' — try after midnight PT or switch models.' . $altMsg,
+            'error' => 'Daily limit reached for ' . $displayName . ' (' . $count . '/' . $limit . ') — resets at midnight PT.' . $altMsg,
             'usage' => $currentUsage,
+            'limits' => $usageLimits,
             'quota_exceeded' => true,
         ], 429);
     }
@@ -308,7 +339,7 @@ if ($provider === 'gemini') {
         $msg = strpos($curlError, 'timed out') !== false || strpos($curlError, 'Timeout') !== false
             ? 'Gemini took too long to respond. Try again or use a faster model.'
             : 'Failed to connect to Gemini API: ' . $curlError;
-        json_response(['error' => $msg, 'usage' => get_usage_for_response(), 'timeout' => true], 504);
+        json_response(['error' => $msg, 'usage' => get_usage_for_response(), 'limits' => get_usage_limits(), 'timeout' => true], 504);
     }
 
     $data = json_decode($response, true);
@@ -323,7 +354,7 @@ if ($provider === 'gemini') {
             $errorMsg = 'Too many requests — wait a moment and try again.';
             $status = 429;
         }
-        json_response(['error' => $errorMsg, 'usage' => get_usage_for_response()], $status);
+        json_response(['error' => $errorMsg, 'usage' => get_usage_for_response(), 'limits' => get_usage_limits()], $status);
     }
 
     // Extract text from response
@@ -341,13 +372,14 @@ if ($provider === 'gemini') {
     }
 
     // Increment usage counter and save to DB
-    $updatedUsage = increment_usage($usageBucket);
+    $updatedUsage = increment_usage($modelId);
     save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
     json_response([
         'result' => $resultText,
         'model'  => $modelId,
         'usage'  => get_usage_for_response(),
+        'limits' => get_usage_limits(),
     ]);
 }
 
@@ -429,7 +461,7 @@ if ($provider === 'anthropic') {
         $msg = strpos($curlError, 'timed out') !== false || strpos($curlError, 'Timeout') !== false
             ? 'Claude took too long to respond. Try again or use a different model.'
             : 'Failed to connect to Claude API: ' . $curlError;
-        json_response(['error' => $msg, 'usage' => get_usage_for_response(), 'timeout' => true], 504);
+        json_response(['error' => $msg, 'usage' => get_usage_for_response(), 'limits' => get_usage_limits(), 'timeout' => true], 504);
     }
 
     $data = json_decode($response, true);
@@ -450,7 +482,7 @@ if ($provider === 'anthropic') {
             $errorMsg = 'Claude API key is invalid. Please contact the admin.';
             $status = 401;
         }
-        json_response(['error' => $errorMsg, 'usage' => get_usage_for_response()], $status);
+        json_response(['error' => $errorMsg, 'usage' => get_usage_for_response(), 'limits' => get_usage_limits()], $status);
     }
 
     // Extract text from response
@@ -468,13 +500,14 @@ if ($provider === 'anthropic') {
     }
 
     // Increment usage counter and save to DB
-    $updatedUsage = increment_usage($usageBucket);
+    $updatedUsage = increment_usage($modelId);
     save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
     json_response([
         'result' => $resultText,
         'model'  => $modelId,
         'usage'  => get_usage_for_response(),
+        'limits' => get_usage_limits(),
     ]);
 }
 

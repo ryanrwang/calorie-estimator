@@ -37,7 +37,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     <span class="material-symbols-outlined theme-icon">light_mode</span> <span id="settings-theme-label">Use dark mode</span>
                 </button>
                 <button type="button" class="settings-menu-item" id="settings-debug-toggle">
-                    <span class="material-symbols-outlined">bug_report</span> Debug mode
+                    <span class="material-symbols-outlined">bug_report</span> <span id="settings-mock-label"><?php echo $mockMode ? 'Disable mock mode' : 'Enable mock mode'; ?></span>
                 </button>
                 <div class="settings-menu-divider"></div>
                 <?php if ($loggedIn): ?>
@@ -94,7 +94,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                 <div class="compact-text-overlay" id="compact-text-overlay"></div>
                 <div class="compact-actions" id="compact-actions">
-                    <div id="compact-usage-ring" class="usage-ring-wrap hidden">
+                    <div id="compact-usage-ring" class="usage-ring-wrap">
                         <svg class="usage-ring" viewBox="0 0 24 24" width="24" height="24">
                             <circle class="usage-ring-track" cx="12" cy="12" r="10" />
                             <circle class="usage-ring-fill compact-ring-fill" cx="12" cy="12" r="10" />
@@ -248,17 +248,18 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
 
     <?php if ($mockMode): ?>
-    <dialog id="mock-exit-dialog" class="mock-exit-dialog">
-        <div class="mock-exit-dialog-content">
-            <div class="mock-exit-dialog-header">
-                <h2 class="mock-exit-dialog-title">Save mock data?</h2>
+    <dialog id="mock-exit-dialog" class="prompt-dialog">
+        <div class="prompt-dialog-content">
+            <div class="prompt-dialog-header">
+                <h2 class="prompt-dialog-title">Save mock data?</h2>
                 <button type="button" id="mock-exit-dialog-close" class="login-dialog-close" aria-label="Cancel">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <div class="mock-exit-dialog-actions">
-                <button type="button" id="mock-exit-yes" class="mock-exit-action-btn mock-exit-yes">Yes</button>
-                <button type="button" id="mock-exit-no" class="mock-exit-action-btn mock-exit-no">No</button>
+            <p class="mock-exit-note">Mock usage counts will be cleared.</p>
+            <div class="prompt-dialog-actions">
+                <button type="button" id="mock-exit-yes" class="prompt-action-btn">Yes</button>
+                <button type="button" id="mock-exit-no" class="prompt-action-btn">No</button>
             </div>
         </div>
     </dialog>
