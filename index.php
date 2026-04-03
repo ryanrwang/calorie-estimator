@@ -69,7 +69,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             <?php if ($mockMode): ?>
             <div class="mock-controls">
                 <p class="brand-subtitle mock-subtitle">MOCK MODE</p>
-                <button type="button" id="mock-exit-btn" class="mock-exit-btn" title="Exit mock mode">
+                <button type="button" id="mock-exit-btn" class="mock-exit-btn" data-tooltip="Exit mock mode">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
@@ -109,7 +109,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                 <div id="photo-preview" class="photo-preview hidden">
                     <img id="photo-preview-img" class="photo-preview-img" alt="Meal photo preview">
-                    <button type="button" id="photo-remove" class="photo-remove" aria-label="Remove photo">
+                    <button type="button" id="photo-remove" class="photo-remove" aria-label="Remove photo" data-tooltip="Remove photo">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -218,7 +218,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             placeholder="Passphrase"
                             autocomplete="off"
                         >
-                        <button type="button" id="login-toggle-pass" class="login-toggle-visibility" aria-label="Toggle passphrase visibility">
+                        <button type="button" id="login-toggle-pass" class="login-toggle-visibility" aria-label="Toggle passphrase visibility" data-tooltip="Show/Hide password">
                             <span class="material-symbols-outlined" id="login-toggle-pass-icon">visibility</span>
                         </button>
                     </div>

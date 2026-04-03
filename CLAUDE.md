@@ -46,6 +46,7 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 - Claude Sonnet and Opus are only available to logged-in users
 - CSRF protection on all forms
 - Client-side image compression: 1024px for API, 200px for thumbnails
+- Every new interactive element (buttons, clickable icons, etc.) must include a `data-tooltip` attribute. Text-labeled buttons with clear visible labels are exempt.
 
 ## Design Tokens
 

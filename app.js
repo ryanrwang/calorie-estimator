@@ -625,7 +625,23 @@
                 currentResultPrompt = payload.text || '';
                 var totalRange = parseTotalRange(data.result);
                 renderCalorieHero(totalRange);
-                showResults(formatResponse(data.result), false);
+                var resultHtml = '';
+                if (currentThumbnail) {
+                    resultHtml += '<div class="history-detail-thumb-wrap results-thumb-wrap" data-tooltip="View image">';
+                    resultHtml += '<img class="history-detail-thumb" src="' + currentThumbnail + '" alt="Meal photo">';
+                    resultHtml += '</div>';
+                }
+                resultHtml += formatResponse(data.result);
+                showResults(resultHtml, false);
+
+                // Bind thumbnail overlay click in results
+                var resultsThumb = resultsContent.querySelector('.results-thumb-wrap');
+                if (resultsThumb) {
+                    resultsThumb.addEventListener('click', function () {
+                        var src = resultsThumb.querySelector('img').src;
+                        showImageOverlay(src);
+                    });
+                }
 
                 // Show results beard
                 if (resultsBeard) {
@@ -741,6 +757,19 @@
     var promptRepromptBtn = document.getElementById('prompt-reprompt-btn');
     var activePromptText = '';
 
+    function showImageOverlay(src) {
+        var overlay = document.createElement('div');
+        overlay.className = 'image-overlay';
+        overlay.innerHTML = '<img src="' + src + '" alt="Meal photo">';
+        overlay.addEventListener('click', function () {
+            overlay.classList.add('closing');
+            overlay.addEventListener('animationend', function () {
+                overlay.remove();
+            });
+        });
+        document.body.appendChild(overlay);
+    }
+
     function openPromptDialog(text) {
         if (!promptDialog || !text) return;
         activePromptText = text;
@@ -830,13 +859,25 @@
             return;
         }
         calorieHero.innerHTML =
-            '<span class="calorie-hero-label">Total</span>' +
+            '<button type="button" class="history-collapse-btn results-collapse-btn" aria-label="Collapse" data-tooltip="Collapse">' +
+                '<span class="calorie-hero-label">Total</span>' +
+                '<span class="material-symbols-outlined">expand_less</span>' +
+            '</button>' +
             '<span class="calorie-hero-range">' +
                 '<span class="calorie-hero-number">' + range.low + '</span>' +
                 '<span class="calorie-hero-number calorie-hero-tilde">~</span>' +
                 '<span class="calorie-hero-number">' + range.high + '</span>' +
             '</span>';
         calorieHero.classList.remove('hidden');
+
+        var resultsCollapseBtn = calorieHero.querySelector('.results-collapse-btn');
+        if (resultsCollapseBtn) {
+            resultsCollapseBtn.addEventListener('click', function () {
+                morphResultToHistory(function () {
+                    expandHistory();
+                });
+            });
+        }
     }
 
     function showResults(html, isError) {
@@ -880,7 +921,7 @@
         var currentHeight = loadingHeight;
 
         // Hide content items for stagger reveal (invisible but taking space)
-        var allItems = resultsContent.querySelectorAll('.result-item, .result-meta, .result-line, .error-text');
+        var allItems = resultsContent.querySelectorAll('.results-thumb-wrap, .result-item, .result-meta, .result-line, .error-text');
         for (var i = 0; i < allItems.length; i++) {
             allItems[i].style.opacity = '0';
             allItems[i].style.transform = 'translateY(6px)';
@@ -1368,7 +1409,10 @@
         }
         h += '</div>';
         h += '<div class="history-header-expanded">';
+        h += '<button type="button" class="history-collapse-btn" aria-label="Collapse" data-tooltip="Collapse">';
         h += '<span class="history-hero-label">Total</span>';
+        h += '<span class="material-symbols-outlined">expand_less</span>';
+        h += '</button>';
         if (entryRange) {
             h += '<span class="history-hero-range">';
             h += '<span class="history-hero-number">' + entryRange.low + '</span>';
@@ -1382,6 +1426,11 @@
         // Detail content
         h += '<div class="history-entry-detail">';
         h += '<div class="history-entry-detail-inner">';
+        if (entry.thumbnail) {
+            h += '<div class="history-detail-thumb-wrap" data-tooltip="View image">';
+            h += '<img class="history-detail-thumb" src="' + entry.thumbnail + '" alt="Meal photo">';
+            h += '</div>';
+        }
         if (entry.input_text) {
             h += '<div class="history-prompt hidden" data-prompt-index="' + i + '">' + escapeHtml(entry.input_text) + '</div>';
         }
@@ -1422,8 +1471,26 @@
     function bindSingleEntryEvents(entryEl) {
         entryEl.addEventListener('click', function (e) {
             if (e.target.closest('.history-beard-btn')) return;
-            this.classList.toggle('expanded');
+            if (e.target.closest('.history-detail-thumb-wrap')) return;
+            // Collapse only via chevron; expand by clicking anywhere
+            if (this.classList.contains('expanded')) {
+                if (e.target.closest('.history-collapse-btn')) {
+                    this.classList.remove('expanded');
+                }
+                return;
+            }
+            this.classList.add('expanded');
         });
+
+        // Thumbnail click — show full-size image overlay
+        var thumbWrap = entryEl.querySelector('.history-detail-thumb-wrap');
+        if (thumbWrap) {
+            thumbWrap.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var src = thumbWrap.querySelector('img').src;
+                showImageOverlay(src);
+            });
+        }
 
         var promptBtn = entryEl.querySelector('.history-show-prompt-btn');
         if (promptBtn) {

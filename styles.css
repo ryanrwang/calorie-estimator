@@ -1286,6 +1286,7 @@ a:hover {
 
 .history-entry.expanded {
     padding: var(--spacing-md);
+    cursor: default;
     transition: padding 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1441,6 +1442,96 @@ a:hover {
 }
 
 /* ── History card hero tokens ── */
+/* ── Collapse chevron button ── */
+.history-collapse-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+}
+
+.history-collapse-btn .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--color-text-tertiary);
+    transition: color var(--transition-fast);
+}
+
+.history-collapse-btn:hover .material-symbols-outlined {
+    color: var(--color-text-primary);
+}
+
+.results-collapse-btn .material-symbols-outlined {
+    font-size: 20px;
+}
+
+.results-collapse-btn[data-tooltip]::after {
+    bottom: auto;
+    top: calc(100% + 4px);
+}
+
+/* ── Detail thumbnail ── */
+.history-detail-thumb-wrap {
+    display: inline-block;
+    margin-bottom: var(--spacing-sm);
+    cursor: pointer;
+}
+
+.history-detail-thumb-wrap[data-tooltip]::after {
+    bottom: auto;
+    top: calc(100% + 4px);
+}
+
+.history-detail-thumb {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    transition: opacity var(--transition-fast);
+}
+
+.history-detail-thumb:hover {
+    opacity: var(--opacity-hover);
+}
+
+/* ── Full-size image overlay ── */
+.image-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+    cursor: pointer;
+    animation: overlayFadeIn 0.2s ease;
+}
+
+.image-overlay.closing {
+    animation: overlayFadeOut 0.2s ease forwards;
+}
+
+.image-overlay img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+}
+
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes overlayFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
 .history-hero-label {
     font-size: var(--typography-sm-fontSize);
     font-weight: var(--typography-xl-fontWeight);
