@@ -2060,8 +2060,12 @@ a:hover {
 .rw-back-logo {
     width: 24px;
     height: 24px;
-    opacity: 0.25;
+    opacity: 0.4;
     transition: opacity var(--transition-fast), transform var(--transition-base);
+}
+
+[data-theme="dark"] .rw-back-logo {
+    opacity: 0.25;
 }
 
 @media (hover: hover) {
