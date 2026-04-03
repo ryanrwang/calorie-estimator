@@ -2060,26 +2060,33 @@ a:hover {
 .rw-back-logo {
     width: 24px;
     height: 24px;
-    opacity: 0.4;
+    opacity: 0.1;
+    filter: invert(1);
     transition: opacity var(--transition-fast), transform var(--transition-base);
 }
 
 [data-theme="dark"] .rw-back-logo {
     opacity: 0.25;
+    filter: none;
 }
+
 
 @media (hover: hover) {
     .rw-back-logo:hover {
         opacity: 0.6;
     }
     .app-footer .rw-back-logo:hover {
-        animation: rw-spin 0.6s ease;
+        animation: rw-wobble 0.6s ease;
     }
 }
 
-@keyframes rw-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+@keyframes rw-wobble {
+    0% { transform: rotate(0deg); }
+    20% { transform: rotate(-15deg); }
+    40% { transform: rotate(12deg); }
+    60% { transform: rotate(-8deg); }
+    80% { transform: rotate(4deg); }
+    100% { transform: rotate(0deg); }
 }
 
 /* ── Mock exit dialog ── */
