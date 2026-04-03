@@ -195,6 +195,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         </section>
     </main>
 
+    <footer class="app-footer">
+        <a href="/apps/" title="Back to Apps" class="rw-back-link">
+            <img src="/images/icon-rw.svg" alt="Back to Apps" class="rw-back-logo">
+        </a>
+    </footer>
+
     <?php if (!$loggedIn): ?>
     <dialog id="login-dialog" class="login-dialog">
         <div class="login-dialog-content">
