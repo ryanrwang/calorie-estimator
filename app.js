@@ -841,14 +841,49 @@
 
     function parseTotalRange(text) {
         var lines = text.split('\n');
+        // 1) Look for explicit "Total" line with a range
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim();
             if (/^total/i.test(line)) {
-                var match = line.match(/~?(\d+)\s*[\u2013\-]+\s*~?(\d+)/);
-                if (match) {
-                    return { low: parseInt(match[1], 10), high: parseInt(match[2], 10) };
+                var rangeMatch = line.match(/~?(\d+)\s*[\u2013\-]+\s*~?(\d+)/);
+                if (rangeMatch) {
+                    return { low: parseInt(rangeMatch[1], 10), high: parseInt(rangeMatch[2], 10) };
+                }
+                // Total line with a single number (e.g. "Total: 198 cal")
+                var singleMatch = line.match(/~?(\d+)\s*(cal|kcal)?/i);
+                if (singleMatch) {
+                    var val = parseInt(singleMatch[1], 10);
+                    return { low: val, high: val };
                 }
             }
+        }
+        // 2) Fallback: sum individual item calories if no Total line found
+        var totalLow = 0, totalHigh = 0, itemCount = 0;
+        for (var j = 0; j < lines.length; j++) {
+            var ln = lines[j].trim();
+            if (!ln) continue;
+            var lowerLn = ln.toLowerCase();
+            if (lowerLn.indexOf('note') === 0 || lowerLn.indexOf('source') === 0 ||
+                lowerLn.indexOf('*') === 0 || lowerLn.indexOf('disclaimer') === 0) continue;
+            // Item with range: name — low–high
+            var itemRange = ln.match(/^.+?\s*[\u2014\u2013\-]+\s*~?(\d+)\s*[\u2013\-]+\s*~?(\d+)/);
+            if (itemRange) {
+                totalLow += parseInt(itemRange[1], 10);
+                totalHigh += parseInt(itemRange[2], 10);
+                itemCount++;
+                continue;
+            }
+            // Item with single number: name — 99 cal
+            var itemSingle = ln.match(/^.+?\s*[\u2014\u2013\-]+\s*~?(\d+)\s*(cal|kcal)?/i);
+            if (itemSingle) {
+                var v = parseInt(itemSingle[1], 10);
+                totalLow += v;
+                totalHigh += v;
+                itemCount++;
+            }
+        }
+        if (itemCount > 0) {
+            return { low: totalLow, high: totalHigh };
         }
         return null;
     }
@@ -865,8 +900,10 @@
             '</button>' +
             '<span class="calorie-hero-range">' +
                 '<span class="calorie-hero-number">' + range.low + '</span>' +
-                '<span class="calorie-hero-number calorie-hero-tilde">~</span>' +
-                '<span class="calorie-hero-number">' + range.high + '</span>' +
+                (range.low !== range.high
+                    ? '<span class="calorie-hero-number calorie-hero-tilde">~</span>' +
+                      '<span class="calorie-hero-number">' + range.high + '</span>'
+                    : '') +
             '</span>';
         calorieHero.classList.remove('hidden');
 
@@ -1403,7 +1440,7 @@
         }
         h += '<span class="history-entry-food-name">' + escapeHtml(summaryText) + '</span>';
         if (entryRange) {
-            h += '<span class="history-entry-calories">' + entryRange.low + ' ~ ' + entryRange.high + '</span>';
+            h += '<span class="history-entry-calories">' + (entryRange.low === entryRange.high ? entryRange.low : entryRange.low + ' ~ ' + entryRange.high) + '</span>';
         } else if (totalCal) {
             h += '<span class="history-entry-calories">' + escapeHtml(totalCal) + '</span>';
         }
@@ -1415,9 +1452,13 @@
         h += '</button>';
         if (entryRange) {
             h += '<span class="history-hero-range">';
-            h += '<span class="history-hero-number">' + entryRange.low + '</span>';
-            h += '<span class="history-hero-number history-hero-tilde">~</span>';
-            h += '<span class="history-hero-number">' + entryRange.high + '</span>';
+            if (entryRange.low === entryRange.high) {
+                h += '<span class="history-hero-number">' + entryRange.low + '</span>';
+            } else {
+                h += '<span class="history-hero-number">' + entryRange.low + '</span>';
+                h += '<span class="history-hero-number history-hero-tilde">~</span>';
+                h += '<span class="history-hero-number">' + entryRange.high + '</span>';
+            }
             h += '</span>';
         }
         h += '</div>';
