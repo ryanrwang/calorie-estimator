@@ -1136,7 +1136,7 @@
         var people;
         if (currentSplitState && currentSplitState.people) {
             people = currentSplitState.people.map(function (p) {
-                return { name: p.name, percent: p.percent };
+                return { name: p.name, percent: p.percent, itemSplits: p.itemSplits || null };
             });
         } else {
             people = [];
@@ -1201,6 +1201,11 @@
             html += 'Original: ' + range.low + (range.low !== range.high ? ' ~ ' + range.high : '');
             html += '</div>';
             html += '</div>';
+        } else if (mode === 'items' && items.length <= 1) {
+            // Single item — show hint instead of sliders
+            html += '<div class="split-total-preview">';
+            html += '<p class="split-single-item-hint">Only 1 item — use Simple or By total</p>';
+            html += '</div>';
         } else {
             // Person or Item mode — show people list
             _splitPersonCount = count;
@@ -1228,14 +1233,6 @@
         updateResetBtnState(dialog, people, mode);
     }
 
-    // Keep old name as alias for history card advanced opener
-    function openAdvancedSplitDialog() {
-        openSplitDialog(function (newState) {
-            currentSplitState = newState;
-            renderCalorieHero(currentTotalRange, currentSplitState);
-            updateHistorySplitState();
-        });
-    }
 
     var _splitPersonCount = 2; // Set before rendering for default item split calculation
 
@@ -2349,6 +2346,15 @@
                     currentItemRanges = parseItemRanges(entry.gemini_response);
                     currentSplitState = entry.split;
 
+                    var globalsRestored = false;
+                    function restoreGlobals() {
+                        if (globalsRestored) return;
+                        globalsRestored = true;
+                        currentTotalRange = savedRange;
+                        currentItemRanges = savedItems;
+                        currentSplitState = savedSplit;
+                    }
+
                     openSplitDialog(function (newState) {
                         // Save result back to history
                         var h = getHistory();
@@ -2366,11 +2372,14 @@
                             if (wasExpanded) newEl.classList.add('expanded');
                             entryEl = newEl;
                         }
-                        // Restore globals
-                        currentTotalRange = savedRange;
-                        currentItemRanges = savedItems;
-                        currentSplitState = savedSplit;
+                        restoreGlobals();
                     });
+
+                    // Restore globals on cancel (backdrop click, Escape, X button)
+                    var splitDialog = document.getElementById('split-dialog');
+                    if (splitDialog) {
+                        splitDialog.addEventListener('close', restoreGlobals, { once: true });
+                    }
                 },
             });
         }

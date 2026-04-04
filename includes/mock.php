@@ -73,8 +73,11 @@ function mock_generate_response($inputText, $modelId) {
         '',
     ];
 
-    // Pick 1-4 random items
+    // If prompt starts with a number, use that as item count
     $count = rand(1, 4);
+    if (preg_match('/^\s*(\d+)/', $inputText, $m)) {
+        $count = max(1, min((int)$m[1], count($foodPool)));
+    }
     shuffle($foodPool);
     $items = array_slice($foodPool, 0, $count);
 
