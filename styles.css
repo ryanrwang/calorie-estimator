@@ -849,7 +849,7 @@ a:hover {
 
 .calorie-hero-range-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--spacing-sm);
 }
 
@@ -857,6 +857,7 @@ a:hover {
     font-size: var(--typography-xs-fontSize);
     color: var(--color-text-tertiary);
     margin-top: var(--spacing-xs);
+    text-align: right;
 }
 
 /* ── Split button ── */
@@ -1028,44 +1029,54 @@ a:hover {
 }
 
 /* ── Reset row (between toggle and content) ── */
-.split-reset-row {
+.split-remove-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    font-weight: var(--typography-xl-fontWeight);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-action-danger);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.split-remove-btn:hover {
+    background-color: var(--color-action-danger);
+    color: var(--color-action-primaryText);
+}
+
+.split-footer-right {
     display: flex;
-    justify-content: flex-end;
-    margin-bottom: var(--spacing-sm);
-    flex-shrink: 0;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
 
 .split-reset-btn {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: var(--typography-xs-fontSize);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--typography-sm-fontSize);
     font-family: inherit;
-    border: none;
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
     background: transparent;
-    color: var(--color-text-link);
+    color: var(--color-text-secondary);
     cursor: pointer;
-    transition: color var(--transition-fast);
+    transition: background-color var(--transition-fast);
 }
 
 .split-reset-btn:hover {
-    color: var(--color-text-linkHover);
-    text-decoration: underline;
+    background-color: var(--color-bg-tertiary);
 }
 
-.split-cancel-btn {
-    padding: var(--spacing-sm) var(--spacing-md);
-    font-size: var(--typography-xs-fontSize);
-    font-family: inherit;
-    border: none;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-    transition: color var(--transition-fast);
+.split-reset-btn:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: default;
+    pointer-events: none;
 }
 
-.split-cancel-btn:hover {
-    color: var(--color-action-danger);
+.split-reset-btn.hidden {
+    display: none;
 }
 
 /* ── Split people summary (hero + history) ── */
@@ -1088,14 +1099,13 @@ a:hover {
 .split-person-row {
     display: flex;
     align-items: baseline;
+    justify-content: flex-end;
     gap: var(--spacing-sm);
     padding: 2px 0;
     font-size: var(--typography-xs-fontSize);
 }
 
 .split-person-name {
-    flex: 1;
-    min-width: 0;
     color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
@@ -1138,13 +1148,16 @@ a:hover {
     max-width: 560px;
     width: calc(100% - var(--spacing-lg));
     box-shadow: var(--shadow-xl);
-    /* Pin to 128px from top, centered horizontally */
-    inset: 128px 0 auto 0;
+    /* Pin to 64px from top, centered horizontally */
+    inset: 64px 0 auto 0;
     margin: 0 auto;
-    max-height: calc(100vh - 128px - 128px);
+    max-height: calc(100vh - 64px - 64px);
+    overflow: hidden;
+}
+
+.split-dialog[open] {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 
 .split-dialog::backdrop {

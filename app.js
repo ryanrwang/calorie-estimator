@@ -1186,13 +1186,6 @@
         }
         html += '</div>';
 
-        // Reset button (between toggle and content, right-aligned)
-        if (mode === 'person' || mode === 'items') {
-            var resetLabel = mode === 'person' ? 'Reset total' : 'Reset items';
-            html += '<div class="split-reset-row">';
-            html += '<button type="button" class="split-reset-btn" id="split-reset">' + resetLabel + '</button>';
-            html += '</div>';
-        }
 
         // Content based on mode
         if (mode === 'total') {
@@ -1222,12 +1215,17 @@
 
         // Footer (outside scrollable content)
         html += '<div class="split-dialog-footer">';
-        html += '<button type="button" class="split-cancel-btn" id="split-remove">Remove split</button>';
+        html += '<button type="button" class="split-remove-btn" id="split-remove">Remove split</button>';
+        html += '<div class="split-footer-right">';
+        var resetLabel = mode === 'person' ? 'Reset total' : 'Reset items';
+        html += '<button type="button" class="split-reset-btn' + (mode === 'total' ? ' hidden' : '') + '" id="split-reset">' + resetLabel + '</button>';
         html += '<button type="button" class="split-apply-btn" id="split-apply">Apply</button>';
+        html += '</div>';
         html += '</div>';
 
         dialog.innerHTML = html;
         bindSplitDialogEvents(dialog, people, mode, count);
+        updateResetBtnState(dialog, people, mode);
     }
 
     // Keep old name as alias for history card advanced opener
@@ -1348,6 +1346,7 @@
                 slider.addEventListener('input', function () {
                     redistributePercents(dialog, people, idx, parseInt(this.value, 10));
                     updatePersonDisplays(dialog, people);
+                    updateResetBtnState(dialog, people, mode);
                 });
             })(sliders[s], s);
         }
@@ -1360,6 +1359,7 @@
                     var val = Math.max(0, Math.min(100, parseInt(this.value, 10) || 0));
                     redistributePercents(dialog, people, idx, val);
                     updatePersonDisplays(dialog, people);
+                    updateResetBtnState(dialog, people, mode);
                 });
             })(pctInputs[p], p);
         }
@@ -1422,6 +1422,7 @@
                             // Update this slider's label
                             var pctLabel = slider.parentElement.querySelector('.split-item-pct');
                             if (pctLabel) pctLabel.textContent = newVal + '%';
+                            updateResetBtnState(dialog, people, mode);
                         });
                     })(itemSliders[is], is);
                 }
@@ -1537,6 +1538,29 @@
         for (var i = 0; i < n; i++) {
             people[i].percent = each + (i < remainder ? 1 : 0);
         }
+    }
+
+    function isAlreadyEven(people, mode) {
+        var n = people.length;
+        var each = Math.floor(100 / n);
+        var remainder = 100 - each * n;
+        for (var i = 0; i < n; i++) {
+            var expected = each + (i < remainder ? 1 : 0);
+            if (people[i].percent !== expected) return false;
+            if (mode === 'items' && people[i].itemSplits) {
+                var splits = people[i].itemSplits;
+                var defPct = Math.round(100 / n);
+                for (var key in splits) {
+                    if (splits.hasOwnProperty(key) && splits[key] !== defPct) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function updateResetBtnState(dialog, people, mode) {
+        var resetBtn = dialog.querySelector('#split-reset');
+        if (resetBtn) resetBtn.disabled = isAlreadyEven(people, mode);
     }
 
     function updatePersonDisplays(dialog, people) {
