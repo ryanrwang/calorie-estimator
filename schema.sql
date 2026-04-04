@@ -16,5 +16,9 @@ CREATE TABLE IF NOT EXISTS meals (
     gemini_response TEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    split_data JSON NULL,
     INDEX idx_user_created (user_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Migration: add split_data column if table already exists
+-- ALTER TABLE meals ADD COLUMN split_data JSON NULL;

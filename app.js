@@ -337,6 +337,7 @@
     var currentTotalRange = null;   // Original total range from AI
     var currentItemRanges = [];     // Parsed [{name, low, high}, ...]
     var currentSplitState = null;   // null = no split, or {mode, count, people, advancedMode, itemSplits}
+    var currentMealId = null;       // DB meal ID for logged-in users (null for localStorage-only)
 
     var currentApiImage = null;
     var currentThumbnail = null;
@@ -626,6 +627,7 @@
             } else {
                 lastResultText = data.result;
                 currentResultPrompt = payload.text || '';
+                currentMealId = data.meal_id || null;
                 var totalRange = parseTotalRange(data.result);
                 currentTotalRange = totalRange;
                 currentItemRanges = parseItemRanges(data.result);
@@ -682,6 +684,7 @@
                     gemini_response: data.result,
                     model_used: data.model || 'flash',
                 };
+                if (currentMealId) historyEntry.meal_id = currentMealId;
                 if (currentSplitState) {
                     historyEntry.split = {
                         active: currentSplitState.active,
@@ -690,6 +693,7 @@
                         people: currentSplitState.people || null,
                         advancedMode: currentSplitState.advancedMode || null,
                     };
+                    saveSplitToDb(currentMealId, historyEntry.split);
                 }
                 saveToHistory(historyEntry);
             }
@@ -957,8 +961,11 @@
 
     function computeSplitLabel(splitState) {
         if (!splitState || !splitState.active) return 'Total';
-        if (splitState.mode === 'simple') return 'Per person';
-        return 'Split';
+        if (splitState.mode === 'simple') {
+            var n = splitState.count || 2;
+            return 'Split by ' + n;
+        }
+        return 'Total';
     }
 
     // ── Shared split event binding ──
@@ -1014,12 +1021,6 @@
 
         // Split events (hero-specific callbacks)
         bindSplitWrapEvents(calorieHero, {
-            getSplitState: function () { return currentSplitState; },
-            onSplitChange: function (newState) {
-                currentSplitState = newState;
-                renderCalorieHero(currentTotalRange, currentSplitState);
-                updateHistorySplitState();
-            },
             onOpenDialog: function () {
                 openSplitDialog(function (newState) {
                     currentSplitState = newState;
@@ -1082,7 +1083,7 @@
         // Update the most recent history entry with current split state
         var history = getHistory();
         if (history.length > 0 && resultsShowing) {
-            history[0].split = currentSplitState ? {
+            var splitObj = currentSplitState ? {
                 active: currentSplitState.active,
                 mode: currentSplitState.mode,
                 count: currentSplitState.count,
@@ -1090,10 +1091,27 @@
                 advancedMode: currentSplitState.advancedMode || null,
                 itemSplits: currentSplitState.itemSplits || null,
             } : null;
+            history[0].split = splitObj;
             try {
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
             } catch (e) { /* noop */ }
+            saveSplitToDb(history[0].meal_id, splitObj);
         }
+    }
+
+    function saveSplitToDb(mealId, splitData) {
+        if (!mealId) return;
+        var csrfInput = document.querySelector('input[name="csrf_token"]');
+        if (!csrfInput) return;
+        fetch('api/split.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                csrf_token: csrfInput.value,
+                meal_id: mealId,
+                split_data: splitData,
+            }),
+        }).catch(function () { /* silent — localStorage is the primary store */ });
     }
 
     // ── Parse item ranges for advanced split ──
@@ -2308,32 +2326,6 @@
         if (splitWrap) {
             var entryIdx = parseInt(entryEl.getAttribute('data-index'), 10);
             bindSplitWrapEvents(entryEl, {
-                getSplitState: function () {
-                    var history = getHistory();
-                    var entry = history[entryIdx];
-                    return entry ? entry.split : null;
-                },
-                onSplitChange: function (newState) {
-                    var history = getHistory();
-                    if (!history[entryIdx]) return;
-                    history[entryIdx].split = newState ? {
-                        active: newState.active,
-                        mode: newState.mode,
-                        count: newState.count,
-                        people: newState.people || null,
-                        advancedMode: newState.advancedMode || null,
-                    } : null;
-                    try {
-                        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-                    } catch (ex) { /* noop */ }
-                    // Re-render card in-place
-                    var wasExpanded = entryEl.classList.contains('expanded');
-                    var newEl = createEntryElement(history[entryIdx], entryIdx);
-                    entryEl.replaceWith(newEl);
-                    bindSingleEntryEvents(newEl);
-                    if (wasExpanded) newEl.classList.add('expanded');
-                    entryEl = newEl;
-                },
                 onOpenDialog: function () {
                     var history = getHistory();
                     var entry = history[entryIdx];
@@ -2359,12 +2351,14 @@
                         // Save result back to history
                         var h = getHistory();
                         if (h[entryIdx]) {
-                            h[entryIdx].split = newState ? {
+                            var splitObj = newState ? {
                                 active: newState.active, mode: newState.mode,
                                 count: newState.count, people: newState.people || null,
                                 advancedMode: newState.advancedMode || null,
                             } : null;
+                            h[entryIdx].split = splitObj;
                             try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch (ex) { /* noop */ }
+                            saveSplitToDb(h[entryIdx].meal_id, splitObj);
                             var wasExpanded = entryEl.classList.contains('expanded');
                             var newEl = createEntryElement(h[entryIdx], entryIdx);
                             entryEl.replaceWith(newEl);

@@ -213,18 +213,21 @@ if (is_mock_mode()) {
     $resultText = mock_generate_response($inputText, $modelId);
 
     // Still save to DB if logged in and DB is available
+    $mealId = null;
     if (is_logged_in() && mock_has_db()) {
-        save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+        $mealId = save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
     }
 
     // Return real usage + a mock_bump for the client to accumulate locally
-    json_response([
+    $resp = [
         'result'    => $resultText,
         'model'     => $modelId,
         'usage'     => get_usage_for_response(),
         'limits'    => get_usage_limits(),
         'mock_bump' => rand(1, 8),
-    ]);
+    ];
+    if ($mealId) $resp['meal_id'] = $mealId;
+    json_response($resp);
 }
 
 // --- Quota check (all models, when hard stop is enabled) ---
@@ -375,14 +378,16 @@ if ($provider === 'gemini') {
 
     // Increment usage counter and save to DB
     $updatedUsage = increment_usage($modelId);
-    save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+    $mealId = save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
-    json_response([
+    $resp = [
         'result' => $resultText,
         'model'  => $modelId,
         'usage'  => get_usage_for_response(),
         'limits' => get_usage_limits(),
-    ]);
+    ];
+    if ($mealId) $resp['meal_id'] = $mealId;
+    json_response($resp);
 }
 
 // --- Anthropic provider ---
@@ -503,21 +508,23 @@ if ($provider === 'anthropic') {
 
     // Increment usage counter and save to DB
     $updatedUsage = increment_usage($modelId);
-    save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+    $mealId = save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
-    json_response([
+    $resp = [
         'result' => $resultText,
         'model'  => $modelId,
         'usage'  => get_usage_for_response(),
         'limits' => get_usage_limits(),
-    ]);
+    ];
+    if ($mealId) $resp['meal_id'] = $mealId;
+    json_response($resp);
 }
 
 // --- Save to database (logged-in users only) ---
 
 function save_to_db($inputText, $inputImage, $thumbnail, $modelId, $responseText) {
     if (!is_logged_in()) {
-        return;
+        return null;
     }
 
     try {
@@ -534,8 +541,10 @@ function save_to_db($inputText, $inputImage, $thumbnail, $modelId, $responseText
             $modelId,
             $responseText,
         ]);
+        return (int)$db->lastInsertId();
     } catch (Exception $e) {
         // Log but don't fail the request
         error_log('Failed to save meal to DB: ' . $e->getMessage());
+        return null;
     }
 }

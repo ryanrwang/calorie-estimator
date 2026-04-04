@@ -909,9 +909,8 @@ a:hover {
 
 /* Collapsed card inline badge count */
 .split-badge-count {
-    font-size: var(--typography-2xs-fontSize);
+    font-size: var(--typography-xs-fontSize);
     font-weight: var(--typography-xl-fontWeight);
-    margin-left: var(--spacing-xs);
 }
 
 /* Tooltip appears below split button to avoid hero overflow clip */
@@ -1136,12 +1135,13 @@ a:hover {
 .history-entry-split-badge {
     display: flex;
     align-items: center;
+    gap: 2px;
     flex-shrink: 0;
     color: var(--color-text-tertiary);
 }
 
 .history-entry-split-badge .material-symbols-outlined {
-    font-size: 14px;
+    font-size: 18px;
 }
 
 
