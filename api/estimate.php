@@ -85,6 +85,8 @@ Note: Range depends on wrap size and amount of sauce. If fries are stuffed insid
 If the image is unclear or you genuinely cannot identify the food, say so and ask for clarification. Do not guess wildly.
 
 Do not add health advice, dietary recommendations, or commentary unless the user asks.
+
+If the user mentions sharing, splitting, or dividing the meal with others, ALWAYS report the FULL total calories for the entire meal. Never divide the total yourself. Instead, add a "Split: N" line at the very end of your response (after notes/sources) where N is the number of people sharing. The app will handle the math. For example, if someone says "I shared a pizza with my friend", estimate the full pizza calories and add "Split: 2" at the end.
 PROMPT;
 
 // --- API usage counter (per-model tracking) ---

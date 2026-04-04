@@ -334,6 +334,9 @@
     var resultsPromptBtn = document.getElementById('results-show-prompt-btn');
     var resultsArchiveBtn = document.getElementById('results-archive-btn');
     var currentResultPrompt = '';
+    var currentTotalRange = null;   // Original total range from AI
+    var currentItemRanges = [];     // Parsed [{name, low, high}, ...]
+    var currentSplitState = null;   // null = no split, or {mode, count, people, advancedMode, itemSplits}
 
     var currentApiImage = null;
     var currentThumbnail = null;
@@ -624,7 +627,19 @@
                 lastResultText = data.result;
                 currentResultPrompt = payload.text || '';
                 var totalRange = parseTotalRange(data.result);
-                renderCalorieHero(totalRange);
+                currentTotalRange = totalRange;
+                currentItemRanges = parseItemRanges(data.result);
+
+                // Auto-detect split from user input or AI response
+                currentSplitState = null;
+                var inputSplit = detectSplitFromInput(payload.text);
+                var responseSplit = detectSplitFromResponse(data.result);
+                var detectedSplit = inputSplit || responseSplit;
+                if (detectedSplit && detectedSplit.count >= 2 && detectedSplit.count <= 20) {
+                    currentSplitState = { active: true, mode: 'simple', count: detectedSplit.count };
+                }
+
+                renderCalorieHero(totalRange, currentSplitState);
                 var resultHtml = '';
                 if (currentThumbnail) {
                     resultHtml += '<div class="history-detail-thumb-wrap results-thumb-wrap" data-tooltip="View image">';
@@ -659,14 +674,24 @@
 
                 resultsShowing = true;
 
-                saveToHistory({
+                var historyEntry = {
                     timestamp: new Date().toISOString(),
                     input_type: currentApiImage ? 'photo' : 'text',
                     input_text: payload.text || '',
                     thumbnail: currentThumbnail,
                     gemini_response: data.result,
                     model_used: data.model || 'flash',
-                });
+                };
+                if (currentSplitState) {
+                    historyEntry.split = {
+                        active: currentSplitState.active,
+                        mode: currentSplitState.mode,
+                        count: currentSplitState.count,
+                        people: currentSplitState.people || null,
+                        advancedMode: currentSplitState.advancedMode || null,
+                    };
+                }
+                saveToHistory(historyEntry);
             }
         })
         .catch(function (err) {
@@ -888,33 +913,699 @@
         return null;
     }
 
-    function renderCalorieHero(range) {
+    // ── Shared split-wrap HTML builder ──
+
+    function buildSplitWrapHtml(splitState) {
+        var isSplit = splitState && splitState.active;
+        var splitCount = isSplit ? (splitState.count || (splitState.people ? splitState.people.length : 2)) : 2;
+        return '<div class="split-wrap">' +
+            '<button type="button" class="split-btn' + (isSplit ? ' split-active' : '') + '" data-tooltip="Split calories">' +
+                '<span class="material-symbols-outlined">safety_divider</span>' +
+                (isSplit ? '<span class="split-count-label">' + splitCount + '</span>' : '') +
+            '</button>' +
+        '</div>';
+    }
+
+    function buildSplitOriginalHtml(range, splitState, items) {
+        var isSplit = splitState && splitState.active;
+        var html = '';
+        if (isSplit && splitState.mode === 'simple') {
+            html += '<div class="calorie-hero-original">Original: ' + range.low +
+                (range.low !== range.high ? ' ~ ' + range.high : '') + '</div>';
+        }
+        if (isSplit && splitState.mode === 'advanced') {
+            html += renderAdvancedSplitSummary(range, splitState, items);
+        }
+        return html;
+    }
+
+    function computeDisplayRange(range, splitState, items) {
+        if (!splitState || !splitState.active) return range;
+        if (splitState.mode === 'simple') {
+            var n = splitState.count || 2;
+            return { low: Math.round(range.low / n), high: Math.round(range.high / n) };
+        }
+        // For advanced mode, show first person's share in the hero
+        if (splitState.mode === 'advanced' && splitState.people && splitState.people.length > 0) {
+            if (splitState.advancedMode === 'items' && items && items.length > 0) {
+                var defPct = Math.round(100 / (splitState.count || splitState.people.length));
+                return computePersonItemCalories(splitState.people[0], items, defPct);
+            }
+        }
+        return range;
+    }
+
+    function computeSplitLabel(splitState) {
+        if (!splitState || !splitState.active) return 'Total';
+        if (splitState.mode === 'simple') return 'Per person';
+        return 'Split';
+    }
+
+    // ── Shared split event binding ──
+
+    function bindSplitWrapEvents(container, callbacks) {
+        var splitBtn = container.querySelector('.split-btn');
+        if (!splitBtn) return;
+
+        splitBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            callbacks.onOpenDialog();
+        });
+    }
+
+    function renderCalorieHero(range, splitState) {
         if (!calorieHero || !range) {
             if (calorieHero) calorieHero.classList.add('hidden');
             return;
         }
-        calorieHero.innerHTML =
+
+        var displayRange = computeDisplayRange(range, splitState, currentItemRanges);
+        var label = computeSplitLabel(splitState);
+
+        var html =
             '<button type="button" class="history-collapse-btn results-collapse-btn" aria-label="Collapse" data-tooltip="Collapse">' +
-                '<span class="calorie-hero-label">Total</span>' +
+                '<span class="calorie-hero-label">' + label + '</span>' +
                 '<span class="material-symbols-outlined">expand_less</span>' +
             '</button>' +
-            '<span class="calorie-hero-range">' +
-                '<span class="calorie-hero-number">' + range.low + '</span>' +
-                (range.low !== range.high
-                    ? '<span class="calorie-hero-number calorie-hero-tilde">~</span>' +
-                      '<span class="calorie-hero-number">' + range.high + '</span>'
-                    : '') +
-            '</span>';
+            '<div class="calorie-hero-right">' +
+                '<div class="calorie-hero-range-row">' +
+                    buildSplitWrapHtml(splitState) +
+                    '<span class="calorie-hero-range">' +
+                        '<span class="calorie-hero-number">' + displayRange.low + '</span>' +
+                        (displayRange.low !== displayRange.high
+                            ? '<span class="calorie-hero-number calorie-hero-tilde">~</span>' +
+                              '<span class="calorie-hero-number">' + displayRange.high + '</span>'
+                            : '') +
+                    '</span>' +
+                '</div>' +
+                buildSplitOriginalHtml(range, splitState, currentItemRanges) +
+            '</div>';
+
+        calorieHero.innerHTML = html;
         calorieHero.classList.remove('hidden');
 
+        // Collapse button
         var resultsCollapseBtn = calorieHero.querySelector('.results-collapse-btn');
         if (resultsCollapseBtn) {
             resultsCollapseBtn.addEventListener('click', function () {
-                morphResultToHistory(function () {
-                    expandHistory();
-                });
+                morphResultToHistory(function () { expandHistory(); });
             });
         }
+
+        // Split events (hero-specific callbacks)
+        bindSplitWrapEvents(calorieHero, {
+            getSplitState: function () { return currentSplitState; },
+            onSplitChange: function (newState) {
+                currentSplitState = newState;
+                renderCalorieHero(currentTotalRange, currentSplitState);
+                updateHistorySplitState();
+            },
+            onOpenDialog: function () {
+                openSplitDialog(function (newState) {
+                    currentSplitState = newState;
+                    renderCalorieHero(currentTotalRange, currentSplitState);
+                    updateHistorySplitState();
+                });
+            },
+        });
+    }
+
+    // Compute per-person calories from item-level splits
+    // defaultPct: the default percentage if no itemSplits entry exists (e.g. 50 for 2 people)
+    function computePersonItemCalories(person, items, defaultPct) {
+        if (defaultPct === undefined) defaultPct = 50;
+        var low = 0, high = 0;
+        for (var j = 0; j < items.length; j++) {
+            var pct = (person.itemSplits && person.itemSplits[j] !== undefined)
+                ? person.itemSplits[j] : defaultPct;
+            low += Math.round(items[j].low * pct / 100);
+            high += Math.round(items[j].high * pct / 100);
+        }
+        return { low: low, high: high };
+    }
+
+    function renderAdvancedSplitSummary(range, splitState, items) {
+        if (!splitState || !splitState.people || splitState.people.length === 0) return '';
+        var isItemMode = splitState.advancedMode === 'items' && items && items.length > 0;
+
+        var html = '<div class="split-people-summary">';
+        for (var i = 0; i < splitState.people.length; i++) {
+            var p = splitState.people[i];
+            var pLow, pHigh, pctLabel;
+            if (isItemMode) {
+                var itemDefPct = Math.round(100 / (splitState.count || splitState.people.length));
+                var cal = computePersonItemCalories(p, items, itemDefPct);
+                pLow = cal.low;
+                pHigh = cal.high;
+                pctLabel = '';
+            } else {
+                var pct = p.percent || 0;
+                pLow = Math.round(range.low * pct / 100);
+                pHigh = Math.round(range.high * pct / 100);
+                pctLabel = pct + '%';
+            }
+            html += '<div class="split-person-row">' +
+                '<span class="split-person-name">' + escapeHtml(p.name) + '</span>' +
+                (pctLabel ? '<span class="split-person-pct">' + pctLabel + '</span>' : '') +
+                '<span class="split-person-cal">' + pLow +
+                    (pLow !== pHigh ? ' ~ ' + pHigh : '') + '</span>' +
+            '</div>';
+        }
+        html += '<div class="calorie-hero-original">Original: ' + range.low +
+            (range.low !== range.high ? ' ~ ' + range.high : '') + '</div>';
+        html += '</div>';
+        return html;
+    }
+
+
+    function updateHistorySplitState() {
+        // Update the most recent history entry with current split state
+        var history = getHistory();
+        if (history.length > 0 && resultsShowing) {
+            history[0].split = currentSplitState ? {
+                active: currentSplitState.active,
+                mode: currentSplitState.mode,
+                count: currentSplitState.count,
+                people: currentSplitState.people || null,
+                advancedMode: currentSplitState.advancedMode || null,
+                itemSplits: currentSplitState.itemSplits || null,
+            } : null;
+            try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+            } catch (e) { /* noop */ }
+        }
+    }
+
+    // ── Parse item ranges for advanced split ──
+
+    function parseItemRanges(text) {
+        var lines = text.split('\n');
+        var items = [];
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line) continue;
+            var lowerLine = line.toLowerCase();
+            if (/^total/i.test(lowerLine)) continue;
+            if (lowerLine.indexOf('source') === 0 || lowerLine.indexOf('note') === 0 ||
+                lowerLine.indexOf('*') === 0 || lowerLine.indexOf('disclaimer') === 0) continue;
+            var match = line.match(/^(.+?)\s*[\u2014\u2013\-]+\s*~?(\d+)\s*[\u2013\-]+\s*~?(\d+)/);
+            if (match) {
+                var name = match[1].replace(/^[-\u2022\u2013\u2014\*]\s*/, '').trim();
+                items.push({ name: name, low: parseInt(match[2], 10), high: parseInt(match[3], 10) });
+            }
+        }
+        return items;
+    }
+
+    // ── Advanced split dialog ──
+
+    function openSplitDialog(onApply) {
+        var dialog = document.getElementById('split-dialog');
+        if (!dialog) return;
+
+        // Determine current mode: simple → 'total', advanced with advancedMode
+        var mode;
+        if (currentSplitState && currentSplitState.mode === 'advanced') {
+            mode = currentSplitState.advancedMode || 'person';
+        } else {
+            mode = 'total';
+        }
+
+        // Initialize people from state
+        var count = (currentSplitState && currentSplitState.count) || 2;
+        var people;
+        if (currentSplitState && currentSplitState.people) {
+            people = currentSplitState.people.map(function (p) {
+                return { name: p.name, percent: p.percent };
+            });
+        } else {
+            people = [];
+            var evenPct = Math.floor(100 / count);
+            var remainder = 100 - evenPct * count;
+            for (var i = 0; i < count; i++) {
+                people.push({ name: 'Person ' + (i + 1), percent: evenPct + (i < remainder ? 1 : 0) });
+            }
+        }
+
+        // Store callback for when dialog closes with Apply
+        dialog._splitOnApply = onApply;
+
+        renderSplitDialog(dialog, people, mode, count);
+        dialog.showModal();
+    }
+
+    function renderSplitDialog(dialog, people, mode, count) {
+        var range = currentTotalRange || { low: 0, high: 0 };
+        var items = currentItemRanges || [];
+
+        var html = '<div class="split-dialog-content">';
+        html += '<div class="split-dialog-header">';
+        html += '<h2 class="split-dialog-title">Split Calories</h2>';
+        html += '<button type="button" class="login-dialog-close split-dialog-close" aria-label="Close">';
+        html += '<span class="material-symbols-outlined">close</span></button>';
+        html += '</div>';
+
+        // People count stepper
+        html += '<div class="split-stepper-section">';
+        html += '<div class="split-dropdown-header">People</div>';
+        html += '<div class="split-dropdown-row">';
+        html += '<button type="button" class="split-dec-btn" aria-label="Decrease">';
+        html += '<span class="material-symbols-outlined">remove</span></button>';
+        html += '<input type="number" class="split-count-input" min="2" max="20" value="' + count + '">';
+        html += '<button type="button" class="split-inc-btn" aria-label="Increase">';
+        html += '<span class="material-symbols-outlined">add</span></button>';
+        html += '</div>';
+        html += '</div>';
+
+        // Mode toggle — 3 tabs
+        html += '<div class="split-mode-toggle">';
+        html += '<button type="button" class="split-mode-btn' + (mode === 'total' ? ' active' : '') + '" data-mode="total">Simple</button>';
+        html += '<button type="button" class="split-mode-btn' + (mode === 'person' ? ' active' : '') + '" data-mode="person">By total</button>';
+        if (items.length > 0) {
+            html += '<button type="button" class="split-mode-btn' + (mode === 'items' ? ' active' : '') + '" data-mode="items">By item</button>';
+        }
+        html += '</div>';
+
+        // Reset button (between toggle and content, right-aligned)
+        if (mode === 'person' || mode === 'items') {
+            var resetLabel = mode === 'person' ? 'Reset total' : 'Reset items';
+            html += '<div class="split-reset-row">';
+            html += '<button type="button" class="split-reset-btn" id="split-reset">' + resetLabel + '</button>';
+            html += '</div>';
+        }
+
+        // Content based on mode
+        if (mode === 'total') {
+            // Simple even split — just show the result
+            var perLow = Math.round(range.low / count);
+            var perHigh = Math.round(range.high / count);
+            html += '<div class="split-total-preview">';
+            html += '<div class="split-total-result">';
+            html += '<span class="split-total-label">Per person</span>';
+            html += '<span class="split-total-value">' + perLow + (perLow !== perHigh ? ' ~ ' + perHigh : '') + '</span>';
+            html += '</div>';
+            html += '<div class="split-total-original">';
+            html += 'Original: ' + range.low + (range.low !== range.high ? ' ~ ' + range.high : '');
+            html += '</div>';
+            html += '</div>';
+        } else {
+            // Person or Item mode — show people list
+            _splitPersonCount = count;
+            html += '<div class="split-people-list" id="split-people-list">';
+            for (var i = 0; i < people.length; i++) {
+                html += renderPersonRow(i, people[i], range, mode === 'items', items);
+            }
+            html += '</div>';
+        }
+
+        html += '</div>'; // close split-dialog-content
+
+        // Footer (outside scrollable content)
+        html += '<div class="split-dialog-footer">';
+        html += '<button type="button" class="split-cancel-btn" id="split-remove">Remove split</button>';
+        html += '<button type="button" class="split-apply-btn" id="split-apply">Apply</button>';
+        html += '</div>';
+
+        dialog.innerHTML = html;
+        bindSplitDialogEvents(dialog, people, mode, count);
+    }
+
+    // Keep old name as alias for history card advanced opener
+    function openAdvancedSplitDialog() {
+        openSplitDialog(function (newState) {
+            currentSplitState = newState;
+            renderCalorieHero(currentTotalRange, currentSplitState);
+            updateHistorySplitState();
+        });
+    }
+
+    var _splitPersonCount = 2; // Set before rendering for default item split calculation
+
+    function renderPersonRow(index, person, range, isItemMode, items) {
+        var html = '<div class="split-person-edit" data-person-index="' + index + '">';
+        html += '<div class="split-person-header">';
+        html += '<input type="text" class="split-person-name-input" value="' + escapeHtml(person.name) + '" placeholder="Name">';
+        if (!isItemMode) {
+            html += '<span class="split-person-pct-display">' + person.percent + '%</span>';
+            var pLow = Math.round(range.low * person.percent / 100);
+            var pHigh = Math.round(range.high * person.percent / 100);
+            html += '<span class="split-person-cal-display">' + pLow +
+                (pLow !== pHigh ? '~' + pHigh : '') + '</span>';
+        }
+        html += '</div>';
+
+        if (!isItemMode) {
+            // Slider for total split
+            html += '<div class="split-slider-row">';
+            html += '<input type="range" class="split-slider" min="0" max="100" value="' + person.percent + '">';
+            html += '<input type="number" class="split-pct-input" min="0" max="100" value="' + person.percent + '">';
+            html += '</div>';
+        } else {
+            // Per-item sliders
+            html += '<div class="split-item-list">';
+            for (var j = 0; j < items.length; j++) {
+                var itemPct = Math.round(100 / _splitPersonCount);
+                if (person.itemSplits && person.itemSplits[j] !== undefined) {
+                    itemPct = person.itemSplits[j];
+                }
+                html += '<div class="split-item-row" data-item-index="' + j + '">';
+                html += '<span class="split-item-name">' + escapeHtml(items[j].name) + '</span>';
+                html += '<input type="range" class="split-item-slider" min="0" max="100" value="' + itemPct + '">';
+                html += '<span class="split-item-pct">' + Math.round(itemPct) + '%</span>';
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    function bindSplitDialogEvents(dialog, people, mode, count) {
+        var closeBtn = dialog.querySelector('.split-dialog-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () { dialog.close(); });
+        }
+        dialog.addEventListener('click', function (e) {
+            if (e.target === dialog) dialog.close();
+        });
+
+        // Stepper +/-
+        var splitInput = dialog.querySelector('.split-count-input');
+        var decBtn = dialog.querySelector('.split-dec-btn');
+        var incBtn = dialog.querySelector('.split-inc-btn');
+
+        function updateCount(newCount) {
+            if (newCount < 2 || newCount > 20) return;
+            collectPeopleState(dialog, people);
+            // Resize people array
+            while (people.length < newCount) {
+                people.push({ name: 'Person ' + (people.length + 1), percent: 0 });
+            }
+            while (people.length > newCount) {
+                people.pop();
+            }
+            evenlyRedistribute(people);
+            // Reset item splits to even for the new count
+            for (var ui = 0; ui < people.length; ui++) {
+                people[ui].itemSplits = {};
+            }
+            count = newCount;
+            renderSplitDialog(dialog, people, mode, count);
+        }
+
+        if (decBtn) {
+            decBtn.addEventListener('click', function () {
+                updateCount((parseInt(splitInput.value, 10) || 2) - 1);
+            });
+        }
+        if (incBtn) {
+            incBtn.addEventListener('click', function () {
+                updateCount((parseInt(splitInput.value, 10) || 2) + 1);
+            });
+        }
+        if (splitInput) {
+            splitInput.addEventListener('change', function () {
+                var val = parseInt(this.value, 10);
+                if (val >= 2 && val <= 20) updateCount(val);
+            });
+        }
+
+        // Mode toggle
+        var modeBtns = dialog.querySelectorAll('.split-mode-btn');
+        for (var m = 0; m < modeBtns.length; m++) {
+            modeBtns[m].addEventListener('click', function () {
+                if (mode !== 'total') collectPeopleState(dialog, people);
+                mode = this.getAttribute('data-mode');
+                renderSplitDialog(dialog, people, mode, count);
+            });
+        }
+
+        // Sliders (person mode)
+        var sliders = dialog.querySelectorAll('.split-slider');
+        for (var s = 0; s < sliders.length; s++) {
+            (function (slider, idx) {
+                slider.addEventListener('input', function () {
+                    redistributePercents(dialog, people, idx, parseInt(this.value, 10));
+                    updatePersonDisplays(dialog, people);
+                });
+            })(sliders[s], s);
+        }
+
+        // Percent inputs
+        var pctInputs = dialog.querySelectorAll('.split-pct-input');
+        for (var p = 0; p < pctInputs.length; p++) {
+            (function (input, idx) {
+                input.addEventListener('change', function () {
+                    var val = Math.max(0, Math.min(100, parseInt(this.value, 10) || 0));
+                    redistributePercents(dialog, people, idx, val);
+                    updatePersonDisplays(dialog, people);
+                });
+            })(pctInputs[p], p);
+        }
+
+        // Name inputs
+        var nameInputs = dialog.querySelectorAll('.split-person-name-input');
+        for (var n = 0; n < nameInputs.length; n++) {
+            (function (input, idx) {
+                input.addEventListener('change', function () {
+                    people[idx].name = this.value || ('Person ' + (idx + 1));
+                });
+            })(nameInputs[n], n);
+        }
+
+        // Item sliders (By item mode) — each item's % across all people must sum to 100
+        var personEdits = dialog.querySelectorAll('.split-person-edit');
+        for (var pe = 0; pe < personEdits.length; pe++) {
+            (function (personEl, personIdx) {
+                var itemSliders = personEl.querySelectorAll('.split-item-slider');
+                for (var is = 0; is < itemSliders.length; is++) {
+                    (function (slider, itemIdx) {
+                        slider.addEventListener('input', function () {
+                            var newVal = parseInt(slider.value, 10);
+                            if (!people[personIdx].itemSplits) people[personIdx].itemSplits = {};
+                            people[personIdx].itemSplits[itemIdx] = newVal;
+
+                            // Redistribute remaining (100 - newVal) among other people for this item
+                            var remaining = 100 - newVal;
+                            var othersTotal = 0;
+                            for (var oi = 0; oi < people.length; oi++) {
+                                if (oi !== personIdx) {
+                                    othersTotal += (people[oi].itemSplits && people[oi].itemSplits[itemIdx] !== undefined)
+                                        ? people[oi].itemSplits[itemIdx] : Math.round(100 / count);
+                                }
+                            }
+
+                            for (var ri = 0; ri < people.length; ri++) {
+                                if (ri === personIdx) continue;
+                                if (!people[ri].itemSplits) people[ri].itemSplits = {};
+                                var oldPct = (people[ri].itemSplits[itemIdx] !== undefined)
+                                    ? people[ri].itemSplits[itemIdx] : Math.round(100 / count);
+                                var newPct = othersTotal > 0
+                                    ? Math.round(oldPct / othersTotal * remaining)
+                                    : Math.round(remaining / (people.length - 1));
+                                newPct = Math.max(0, Math.min(100, newPct));
+                                people[ri].itemSplits[itemIdx] = newPct;
+
+                                // Update the other person's slider and label in the DOM
+                                var otherPerson = personEdits[ri];
+                                if (otherPerson) {
+                                    var otherSliders = otherPerson.querySelectorAll('.split-item-slider');
+                                    if (otherSliders[itemIdx]) {
+                                        otherSliders[itemIdx].value = newPct;
+                                        var otherLabel = otherSliders[itemIdx].parentElement.querySelector('.split-item-pct');
+                                        if (otherLabel) otherLabel.textContent = newPct + '%';
+                                    }
+                                }
+                            }
+
+                            // Update this slider's label
+                            var pctLabel = slider.parentElement.querySelector('.split-item-pct');
+                            if (pctLabel) pctLabel.textContent = newVal + '%';
+                        });
+                    })(itemSliders[is], is);
+                }
+            })(personEdits[pe], pe);
+        }
+
+        // Reset — evenly distribute
+        var resetBtn = dialog.querySelector('#split-reset');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                evenlyRedistribute(people);
+                // Clear all item splits
+                for (var ri = 0; ri < people.length; ri++) {
+                    people[ri].itemSplits = {};
+                }
+                renderSplitDialog(dialog, people, mode, count);
+            });
+        }
+
+        // Remove split
+        var removeBtn = dialog.querySelector('#split-remove');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function () {
+                dialog.close();
+                if (dialog._splitOnApply) dialog._splitOnApply(null);
+            });
+        }
+
+        // Apply
+        var applyBtn = dialog.querySelector('#split-apply');
+        if (applyBtn) {
+            applyBtn.addEventListener('click', function () {
+                if (mode !== 'total') collectPeopleState(dialog, people);
+                dialog.close();
+                var newState;
+                if (mode === 'total') {
+                    newState = { active: true, mode: 'simple', count: count };
+                } else {
+                    newState = {
+                        active: true,
+                        mode: 'advanced',
+                        count: count,
+                        people: people,
+                        advancedMode: mode,
+                    };
+                }
+                if (dialog._splitOnApply) dialog._splitOnApply(newState);
+            });
+        }
+    }
+
+    function collectPeopleState(dialog, people) {
+        var rows = dialog.querySelectorAll('.split-person-edit');
+        for (var i = 0; i < rows.length && i < people.length; i++) {
+            var nameInput = rows[i].querySelector('.split-person-name-input');
+            if (nameInput) people[i].name = nameInput.value || ('Person ' + (i + 1));
+            var slider = rows[i].querySelector('.split-slider');
+            if (slider) people[i].percent = parseInt(slider.value, 10) || 0;
+            // Collect item splits
+            var itemSliders = rows[i].querySelectorAll('.split-item-slider');
+            if (itemSliders.length > 0) {
+                if (!people[i].itemSplits) people[i].itemSplits = {};
+                for (var j = 0; j < itemSliders.length; j++) {
+                    people[i].itemSplits[j] = parseInt(itemSliders[j].value, 10) || 0;
+                }
+            }
+        }
+    }
+
+    function redistributePercents(dialog, people, changedIdx, newVal) {
+        var oldVal = people[changedIdx].percent;
+        var diff = newVal - oldVal;
+        people[changedIdx].percent = newVal;
+
+        // Distribute the difference among other people proportionally
+        var othersTotal = 0;
+        for (var i = 0; i < people.length; i++) {
+            if (i !== changedIdx) othersTotal += people[i].percent;
+        }
+
+        if (othersTotal > 0 && diff !== 0) {
+            var remaining = 100 - newVal;
+            for (var j = 0; j < people.length; j++) {
+                if (j !== changedIdx) {
+                    people[j].percent = Math.round(people[j].percent / othersTotal * remaining);
+                }
+            }
+        } else if (othersTotal === 0 && people.length > 1) {
+            // All others at 0 — distribute evenly
+            var each = Math.floor((100 - newVal) / (people.length - 1));
+            for (var k = 0; k < people.length; k++) {
+                if (k !== changedIdx) people[k].percent = each;
+            }
+        }
+
+        // Fix rounding to ensure total = 100
+        var total = 0;
+        for (var t = 0; t < people.length; t++) total += people[t].percent;
+        if (total !== 100 && people.length > 1) {
+            for (var f = 0; f < people.length; f++) {
+                if (f !== changedIdx) {
+                    people[f].percent += (100 - total);
+                    break;
+                }
+            }
+        }
+    }
+
+    function evenlyRedistribute(people) {
+        var n = people.length;
+        var each = Math.floor(100 / n);
+        var remainder = 100 - each * n;
+        for (var i = 0; i < n; i++) {
+            people[i].percent = each + (i < remainder ? 1 : 0);
+        }
+    }
+
+    function updatePersonDisplays(dialog, people) {
+        var range = currentTotalRange || { low: 0, high: 0 };
+        var rows = dialog.querySelectorAll('.split-person-edit');
+        for (var i = 0; i < rows.length && i < people.length; i++) {
+            var slider = rows[i].querySelector('.split-slider');
+            var pctInput = rows[i].querySelector('.split-pct-input');
+            var pctDisplay = rows[i].querySelector('.split-person-pct-display');
+            var calDisplay = rows[i].querySelector('.split-person-cal-display');
+
+            if (slider) slider.value = people[i].percent;
+            if (pctInput) pctInput.value = people[i].percent;
+            if (pctDisplay) pctDisplay.textContent = people[i].percent + '%';
+
+            if (calDisplay) {
+                var pLow = Math.round(range.low * people[i].percent / 100);
+                var pHigh = Math.round(range.high * people[i].percent / 100);
+                calDisplay.textContent = pLow + (pLow !== pHigh ? '~' + pHigh : '');
+            }
+        }
+    }
+
+    // ── AI split detection (client-side) ──
+
+    function detectSplitFromInput(text) {
+        if (!text) return null;
+        var lower = text.toLowerCase();
+
+        // Explicit "split by N" / "divide by N"
+        var explicitMatch = lower.match(/(?:split|divide|shared?)\s*(?:by|between|among|with)\s*(\d+)/);
+        if (explicitMatch) {
+            return { count: parseInt(explicitMatch[1], 10) };
+        }
+
+        // "shared with N people/friends"
+        var sharedWith = lower.match(/shared?\s+(?:with|between|among)\s+(\d+)\s*(?:people|friends|others)/);
+        if (sharedWith) {
+            return { count: parseInt(sharedWith[1], 10) + 1 }; // +1 for the user
+        }
+
+        // "my friend and I" / "we split" / "shared with a friend" / "between us"
+        var twoPersonPatterns = [
+            /\bshared?\b.{0,40}\bwith\s+(?:a\s+|my\s+)?friend\b/,
+            /\bmy\s+friend\s+and\s+(?:i|me)\b/,
+            /\b(?:i|me)\s+and\s+(?:a\s+|my\s+)?friend\b/,
+            /\bwe\s+(?:split|shared?|divided?|ate)\b/,
+            /\bbetween\s+(?:us|the\s+two)\b/,
+            /\bhalf\s+(?:of\s+)?(?:a|the|my)\b/,
+            /\bsplit\b.{0,20}\b(?:a|the|my|with)\b/,
+            /\bwith\s+(?:a\s+|my\s+)?(?:friend|partner|wife|husband|boyfriend|girlfriend)\b/,
+        ];
+        for (var i = 0; i < twoPersonPatterns.length; i++) {
+            if (twoPersonPatterns[i].test(lower)) {
+                return { count: 2 };
+            }
+        }
+
+        return null;
+    }
+
+    // Parse AI response for "Split: N" line
+    function detectSplitFromResponse(text) {
+        if (!text) return null;
+        var match = text.match(/^split:\s*(\d+)/im);
+        if (match) {
+            return { count: parseInt(match[1], 10) };
+        }
+        return null;
     }
 
     function showResults(html, isError) {
@@ -1439,27 +2130,61 @@
             h += '<img class="history-thumb" src="' + entry.thumbnail + '" alt="" style="width:32px;height:32px;">';
         }
         h += '<span class="history-entry-food-name">' + escapeHtml(summaryText) + '</span>';
-        if (entryRange) {
-            h += '<span class="history-entry-calories">' + (entryRange.low === entryRange.high ? entryRange.low : entryRange.low + ' ~ ' + entryRange.high) + '</span>';
+        var collapsedRange = entryRange;
+        if (entry.split && entry.split.active && entryRange) {
+            if (entry.split.mode === 'simple') {
+                var cc = entry.split.count || 2;
+                collapsedRange = { low: Math.round(entryRange.low / cc), high: Math.round(entryRange.high / cc) };
+            } else if (entry.split.mode === 'advanced' && entry.split.people && entry.split.people.length > 0) {
+                var p0 = entry.split.people[0];
+                if (entry.split.advancedMode === 'items') {
+                    var cItems = parseItemRanges(entry.gemini_response);
+                    if (cItems.length > 0) {
+                        var cDefPct = Math.round(100 / (entry.split.count || entry.split.people.length));
+                        collapsedRange = computePersonItemCalories(p0, cItems, cDefPct);
+                    }
+                } else {
+                    var pct0 = p0.percent || 0;
+                    collapsedRange = { low: Math.round(entryRange.low * pct0 / 100), high: Math.round(entryRange.high * pct0 / 100) };
+                }
+            }
+        }
+        if (collapsedRange) {
+            if (entry.split && entry.split.active) {
+                var badgeCount = entry.split.count || (entry.split.people ? entry.split.people.length : 2);
+                h += '<span class="history-entry-split-badge" data-tooltip="Split by ' + badgeCount + '">' +
+                    '<span class="material-symbols-outlined">safety_divider</span>' +
+                    '<span class="split-badge-count">' + badgeCount + '</span></span>';
+            }
+            h += '<span class="history-entry-calories">' + (collapsedRange.low === collapsedRange.high ? collapsedRange.low : collapsedRange.low + ' ~ ' + collapsedRange.high) + '</span>';
         } else if (totalCal) {
             h += '<span class="history-entry-calories">' + escapeHtml(totalCal) + '</span>';
         }
         h += '</div>';
         h += '<div class="history-header-expanded">';
+        var hasSplit = entry.split && entry.split.active;
+        var heroLabel = computeSplitLabel(entry.split);
+        var entryItemsForHeader = parseItemRanges(entry.gemini_response);
+        var heroRange = entryRange ? computeDisplayRange(entryRange, entry.split, entryItemsForHeader) : null;
         h += '<button type="button" class="history-collapse-btn" aria-label="Collapse" data-tooltip="Collapse">';
-        h += '<span class="history-hero-label">Total</span>';
+        h += '<span class="history-hero-label">' + heroLabel + '</span>';
         h += '<span class="material-symbols-outlined">expand_less</span>';
         h += '</button>';
-        if (entryRange) {
+        if (heroRange) {
+            h += '<div class="calorie-hero-right">';
+            h += '<div class="calorie-hero-range-row">';
+            h += buildSplitWrapHtml(entry.split);
             h += '<span class="history-hero-range">';
-            if (entryRange.low === entryRange.high) {
-                h += '<span class="history-hero-number">' + entryRange.low + '</span>';
+            if (heroRange.low === heroRange.high) {
+                h += '<span class="history-hero-number">' + heroRange.low + '</span>';
             } else {
-                h += '<span class="history-hero-number">' + entryRange.low + '</span>';
+                h += '<span class="history-hero-number">' + heroRange.low + '</span>';
                 h += '<span class="history-hero-number history-hero-tilde">~</span>';
-                h += '<span class="history-hero-number">' + entryRange.high + '</span>';
+                h += '<span class="history-hero-number">' + heroRange.high + '</span>';
             }
             h += '</span>';
+            h += '</div>';
+            h += '</div>';
         }
         h += '</div>';
         h += '</div>';
@@ -1467,6 +2192,9 @@
         // Detail content
         h += '<div class="history-entry-detail">';
         h += '<div class="history-entry-detail-inner">';
+        // Split details at top of detail area (not in header)
+        var entryItems = parseItemRanges(entry.gemini_response);
+        if (entryRange) h += buildSplitOriginalHtml(entryRange, entry.split, entryItems);
         if (entry.thumbnail) {
             h += '<div class="history-detail-thumb-wrap" data-tooltip="View image">';
             h += '<img class="history-detail-thumb" src="' + entry.thumbnail + '" alt="Meal photo">';
@@ -1551,6 +2279,75 @@
                 e.stopPropagation();
                 var idx = parseInt(this.getAttribute('data-entry-index'), 10);
                 archiveEntry(idx);
+            });
+        }
+
+        // History split — full split-wrap with dropdown (same as hero)
+        var splitWrap = entryEl.querySelector('.split-wrap');
+        if (splitWrap) {
+            var entryIdx = parseInt(entryEl.getAttribute('data-index'), 10);
+            bindSplitWrapEvents(entryEl, {
+                getSplitState: function () {
+                    var history = getHistory();
+                    var entry = history[entryIdx];
+                    return entry ? entry.split : null;
+                },
+                onSplitChange: function (newState) {
+                    var history = getHistory();
+                    if (!history[entryIdx]) return;
+                    history[entryIdx].split = newState ? {
+                        active: newState.active,
+                        mode: newState.mode,
+                        count: newState.count,
+                        people: newState.people || null,
+                        advancedMode: newState.advancedMode || null,
+                    } : null;
+                    try {
+                        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                    } catch (ex) { /* noop */ }
+                    // Re-render card in-place
+                    var wasExpanded = entryEl.classList.contains('expanded');
+                    var newEl = createEntryElement(history[entryIdx], entryIdx);
+                    entryEl.replaceWith(newEl);
+                    bindSingleEntryEvents(newEl);
+                    if (wasExpanded) newEl.classList.add('expanded');
+                    entryEl = newEl;
+                },
+                onOpenDialog: function () {
+                    var history = getHistory();
+                    var entry = history[entryIdx];
+                    if (!entry) return;
+                    // Temporarily set globals for dialog
+                    var savedRange = currentTotalRange;
+                    var savedItems = currentItemRanges;
+                    var savedSplit = currentSplitState;
+                    currentTotalRange = parseTotalRange(entry.gemini_response);
+                    currentItemRanges = parseItemRanges(entry.gemini_response);
+                    currentSplitState = entry.split;
+
+                    openSplitDialog(function (newState) {
+                        // Save result back to history
+                        var h = getHistory();
+                        if (h[entryIdx]) {
+                            h[entryIdx].split = newState ? {
+                                active: newState.active, mode: newState.mode,
+                                count: newState.count, people: newState.people || null,
+                                advancedMode: newState.advancedMode || null,
+                            } : null;
+                            try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch (ex) { /* noop */ }
+                            var wasExpanded = entryEl.classList.contains('expanded');
+                            var newEl = createEntryElement(h[entryIdx], entryIdx);
+                            entryEl.replaceWith(newEl);
+                            bindSingleEntryEvents(newEl);
+                            if (wasExpanded) newEl.classList.add('expanded');
+                            entryEl = newEl;
+                        }
+                        // Restore globals
+                        currentTotalRange = savedRange;
+                        currentItemRanges = savedItems;
+                        currentSplitState = savedSplit;
+                    });
+                },
             });
         }
     }

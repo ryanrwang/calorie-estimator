@@ -273,6 +273,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     </dialog>
     <?php endif; ?>
 
+    <dialog id="split-dialog" class="split-dialog"></dialog>
+
     <dialog id="prompt-dialog" class="prompt-dialog">
         <div class="prompt-dialog-content">
             <div class="prompt-dialog-header">
