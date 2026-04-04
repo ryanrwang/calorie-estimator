@@ -840,6 +840,623 @@ a:hover {
     opacity: 0.5;
 }
 
+/* ── Calorie hero right (split layout) ── */
+.calorie-hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.calorie-hero-range-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.calorie-hero-original {
+    font-size: var(--typography-xs-fontSize);
+    color: var(--color-text-tertiary);
+    margin-top: var(--spacing-xs);
+    text-align: right;
+}
+
+/* ── Split button ── */
+.split-wrap {
+    position: relative;
+}
+
+.split-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    height: 32px;
+    padding: 0 var(--spacing-sm);
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.split-btn:hover {
+    background-color: var(--color-interactive-hoverStrong);
+    color: var(--color-text-secondary);
+}
+
+.split-btn.split-active {
+    color: var(--color-action-primary);
+    background-color: var(--color-interactive-selected);
+}
+
+.split-btn .material-symbols-outlined {
+    font-size: 24px;
+}
+
+/* Split count label (inline next to icon) */
+.split-count-label {
+    font-size: var(--typography-sm-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    line-height: 1;
+}
+
+/* Smaller label on history split buttons */
+.history-split-btn .split-count-label {
+    font-size: var(--typography-xs-fontSize);
+}
+
+/* Collapsed card inline badge count */
+.split-badge-count {
+    font-size: var(--typography-xs-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+}
+
+/* Tooltip appears below split button to avoid hero overflow clip */
+.split-btn[data-tooltip]::after {
+    bottom: auto;
+    top: calc(100% + 4px);
+}
+
+/* Ensure hero doesn't clip the tooltip */
+.calorie-hero {
+    overflow: visible;
+}
+
+
+/* ── Split dialog stepper ── */
+.split-stepper-section {
+    margin-bottom: var(--spacing-lg);
+    flex-shrink: 0;
+}
+
+.split-dropdown-header {
+    font-size: var(--typography-xs-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--spacing-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+}
+
+.split-dropdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-md);
+}
+
+.split-dec-btn,
+.split-inc-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                border-color var(--transition-fast);
+}
+
+.split-dec-btn:hover,
+.split-inc-btn:hover {
+    background-color: var(--color-interactive-hover);
+    border-color: var(--color-border-strong);
+}
+
+.split-dec-btn .material-symbols-outlined,
+.split-inc-btn .material-symbols-outlined {
+    font-size: 20px;
+}
+
+.split-count-input {
+    width: 56px;
+    height: 40px;
+    text-align: center;
+    font-size: var(--typography-xl-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-surfaceRaised);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    -moz-appearance: textfield;
+}
+
+.split-count-input::-webkit-outer-spin-button,
+.split-count-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* ── "By total" preview in dialog ── */
+.split-total-preview {
+    padding: var(--spacing-lg) var(--spacing-md);
+    text-align: center;
+}
+
+.split-total-result {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.split-total-label {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-secondary);
+}
+
+.split-total-value {
+    font-size: var(--typography-2xl-fontSize);
+    font-weight: var(--typography-2xl-fontWeight);
+    color: var(--color-action-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.split-total-original {
+    font-size: var(--typography-xs-fontSize);
+    color: var(--color-text-tertiary);
+}
+
+.split-single-item-hint {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-tertiary);
+    text-align: center;
+    margin: 0;
+}
+
+/* ── Reset row (between toggle and content) ── */
+.split-remove-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    font-weight: var(--typography-xl-fontWeight);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-action-danger);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.split-remove-btn:hover {
+    background-color: var(--color-action-danger);
+    color: var(--color-action-primaryText);
+}
+
+.split-footer-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.split-reset-btn {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.split-reset-btn:hover {
+    background-color: var(--color-bg-tertiary);
+}
+
+.split-reset-btn:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: default;
+    pointer-events: none;
+}
+
+.split-reset-btn.hidden {
+    display: none;
+}
+
+/* ── Split people summary (hero + history) ── */
+.split-people-summary {
+    margin-top: var(--spacing-sm);
+    border-top: 1px solid var(--color-border-default);
+    padding-top: var(--spacing-sm);
+}
+
+/* When split details appear inside detail area, add bottom spacing */
+.history-entry-detail-inner > .calorie-hero-original,
+.history-entry-detail-inner > .split-people-summary {
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-top: none;
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.split-person-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    padding: 2px 0;
+    font-size: var(--typography-xs-fontSize);
+}
+
+.split-person-name {
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.split-person-pct {
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.split-person-cal {
+    flex-shrink: 0;
+    color: var(--color-action-primary);
+    font-weight: var(--typography-xl-fontWeight);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── History collapsed split badge ── */
+.history-entry-split-badge {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+}
+
+.history-entry-split-badge .material-symbols-outlined {
+    font-size: 18px;
+}
+
+
+/* ── Advanced split dialog ── */
+.split-dialog {
+    border: none;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    padding: 0;
+    max-width: 560px;
+    width: calc(100% - var(--spacing-lg));
+    box-shadow: var(--shadow-xl);
+    /* Pin to 64px from top, centered horizontally */
+    inset: 64px 0 auto 0;
+    margin: 0 auto;
+    max-height: calc(100vh - 64px - 64px);
+    overflow: hidden;
+}
+
+.split-dialog[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.split-dialog::backdrop {
+    background-color: var(--color-bg-overlay);
+}
+
+.split-dialog-content {
+    padding: var(--spacing-lg);
+    padding-bottom: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.split-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-lg);
+    flex-shrink: 0;
+}
+
+.split-dialog-title {
+    font-size: var(--typography-lg-fontSize);
+    font-weight: var(--typography-2xl-fontWeight);
+}
+
+/* ── Mode toggle ── */
+.split-mode-toggle {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-xs);
+    background-color: var(--color-bg-muted);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.split-mode-btn {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    font-weight: var(--typography-base-fontWeight);
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.split-mode-btn:hover {
+    color: var(--color-text-primary);
+}
+
+.split-mode-btn.active {
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    font-weight: var(--typography-xl-fontWeight);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ── People list ── */
+.split-people-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.split-person-edit {
+    padding: var(--spacing-md);
+    background-color: var(--color-bg-muted);
+    border-radius: var(--radius-md);
+}
+
+.split-person-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.split-person-name-input {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+}
+
+.split-person-name-input:focus {
+    outline: none;
+    border-color: var(--color-border-focus);
+}
+
+.split-person-pct-display {
+    flex-shrink: 0;
+    font-size: var(--typography-sm-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+    min-width: 40px;
+    text-align: right;
+}
+
+.split-person-cal-display {
+    flex-shrink: 0;
+    font-size: var(--typography-sm-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-action-primary);
+    font-variant-numeric: tabular-nums;
+    min-width: 64px;
+    text-align: right;
+}
+
+/* ── Slider row ── */
+.split-slider-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.split-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--color-border-default);
+    border-radius: var(--radius-full);
+    outline: none;
+}
+
+.split-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-full);
+    background: var(--color-action-primary);
+    cursor: pointer;
+    border: 2px solid var(--color-bg-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.split-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius-full);
+    background: var(--color-action-primary);
+    cursor: pointer;
+    border: 2px solid var(--color-bg-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.split-pct-input {
+    width: 56px;
+    height: 32px;
+    text-align: center;
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    -moz-appearance: textfield;
+}
+
+.split-pct-input::-webkit-outer-spin-button,
+.split-pct-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* ── Item split rows ── */
+.split-item-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+.split-item-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--typography-xs-fontSize);
+}
+
+.split-item-name {
+    flex: 1;
+    min-width: 0;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.split-item-slider {
+    width: 80px;
+    height: 3px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--color-border-default);
+    border-radius: var(--radius-full);
+    outline: none;
+}
+
+.split-item-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    background: var(--color-action-primary);
+    cursor: pointer;
+}
+
+.split-item-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    background: var(--color-action-primary);
+    cursor: pointer;
+}
+
+.split-item-pct {
+    width: 32px;
+    text-align: right;
+    color: var(--color-text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.split-dialog-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-top: 1px solid var(--color-border-default);
+    flex-shrink: 0;
+}
+
+.split-apply-btn {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-action-primaryText);
+    background-color: var(--color-action-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.split-apply-btn:hover {
+    background-color: var(--color-action-primaryHover);
+}
+
+/* ── Responsive: split dialog ── */
+@media (max-width: 480px) {
+    .split-dialog {
+        max-width: 100%;
+        width: calc(100% - var(--spacing-md));
+        inset: 64px 0 auto 0;
+        max-height: calc(100vh - 64px - 64px);
+    }
+
+    .split-dialog-content {
+        padding: var(--spacing-md);
+    }
+
+    .split-person-header {
+        flex-wrap: wrap;
+    }
+
+    .split-person-name-input {
+        flex-basis: 100%;
+    }
+}
+
 /* ── Results table ── */
 .results-content {
 }
@@ -1224,6 +1841,7 @@ a:hover {
     position: absolute;
     inset: 0;
     justify-content: space-between;
+    align-items: baseline;
     opacity: 0;
     transform: translateY(4px);
     pointer-events: none;

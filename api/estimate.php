@@ -85,6 +85,8 @@ Note: Range depends on wrap size and amount of sauce. If fries are stuffed insid
 If the image is unclear or you genuinely cannot identify the food, say so and ask for clarification. Do not guess wildly.
 
 Do not add health advice, dietary recommendations, or commentary unless the user asks.
+
+If the user mentions sharing, splitting, or dividing the meal with others, ALWAYS report the FULL total calories for the entire meal. Never divide the total yourself. Instead, add a "Split: N" line at the very end of your response (after notes/sources) where N is the number of people sharing. The app will handle the math. For example, if someone says "I shared a pizza with my friend", estimate the full pizza calories and add "Split: 2" at the end.
 PROMPT;
 
 // --- API usage counter (per-model tracking) ---
@@ -211,18 +213,21 @@ if (is_mock_mode()) {
     $resultText = mock_generate_response($inputText, $modelId);
 
     // Still save to DB if logged in and DB is available
+    $mealId = null;
     if (is_logged_in() && mock_has_db()) {
-        save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+        $mealId = save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
     }
 
     // Return real usage + a mock_bump for the client to accumulate locally
-    json_response([
+    $resp = [
         'result'    => $resultText,
         'model'     => $modelId,
         'usage'     => get_usage_for_response(),
         'limits'    => get_usage_limits(),
         'mock_bump' => rand(1, 8),
-    ]);
+    ];
+    if ($mealId) $resp['meal_id'] = $mealId;
+    json_response($resp);
 }
 
 // --- Quota check (all models, when hard stop is enabled) ---
@@ -373,14 +378,16 @@ if ($provider === 'gemini') {
 
     // Increment usage counter and save to DB
     $updatedUsage = increment_usage($modelId);
-    save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+    $mealId = save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
-    json_response([
+    $resp = [
         'result' => $resultText,
         'model'  => $modelId,
         'usage'  => get_usage_for_response(),
         'limits' => get_usage_limits(),
-    ]);
+    ];
+    if ($mealId) $resp['meal_id'] = $mealId;
+    json_response($resp);
 }
 
 // --- Anthropic provider ---
@@ -501,21 +508,23 @@ if ($provider === 'anthropic') {
 
     // Increment usage counter and save to DB
     $updatedUsage = increment_usage($modelId);
-    save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
+    $mealId = save_to_db($inputText, $inputImage, $inputThumbnail, $modelId, $resultText);
 
-    json_response([
+    $resp = [
         'result' => $resultText,
         'model'  => $modelId,
         'usage'  => get_usage_for_response(),
         'limits' => get_usage_limits(),
-    ]);
+    ];
+    if ($mealId) $resp['meal_id'] = $mealId;
+    json_response($resp);
 }
 
 // --- Save to database (logged-in users only) ---
 
 function save_to_db($inputText, $inputImage, $thumbnail, $modelId, $responseText) {
     if (!is_logged_in()) {
-        return;
+        return null;
     }
 
     try {
@@ -532,8 +541,10 @@ function save_to_db($inputText, $inputImage, $thumbnail, $modelId, $responseText
             $modelId,
             $responseText,
         ]);
+        return (int)$db->lastInsertId();
     } catch (Exception $e) {
         // Log but don't fail the request
         error_log('Failed to save meal to DB: ' . $e->getMessage());
+        return null;
     }
 }
