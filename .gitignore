@@ -16,3 +16,4 @@ Thumbs.db
 # Project-specific
 includes/config.php
 data/*.json
+data/sessions/
