@@ -1176,10 +1176,10 @@
         var range = currentTotalRange || { low: 0, high: 0 };
         var items = currentItemRanges || [];
 
-        var html = '<div class="split-dialog-content">';
-        html += '<div class="split-dialog-header">';
-        html += '<h2 class="split-dialog-title">Split Calories</h2>';
-        html += '<button type="button" class="login-dialog-close split-dialog-close" aria-label="Close">';
+        var html = '<div class="modal-content">';
+        html += '<div class="modal-header" style="align-items:center;margin-bottom:var(--spacing-lg);flex-shrink:0">';
+        html += '<h2 class="modal-title">Split Calories</h2>';
+        html += '<button type="button" class="modal-close split-dialog-close" aria-label="Close">';
         html += '<span class="material-symbols-outlined">close</span></button>';
         html += '</div>';
 

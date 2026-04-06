@@ -202,11 +202,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     </footer>
 
     <?php if (!$loggedIn): ?>
-    <dialog id="login-dialog" class="login-dialog">
-        <div class="login-dialog-content">
-            <div class="login-dialog-header">
-                <h2 class="login-heading">Log In</h2>
-                <button type="button" class="login-dialog-close" id="login-close-btn" aria-label="Close">
+    <dialog id="login-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Log In</h2>
+                <button type="button" class="modal-close" id="login-close-btn" aria-label="Close">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
@@ -228,7 +228,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             <span class="material-symbols-outlined" id="login-toggle-pass-icon">visibility</span>
                         </button>
                     </div>
-                    <button type="button" id="login-passphrase-btn" class="submit-pill" style="width:100%;height:44px;">Continue</button>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="login-passphrase-btn" class="modal-btn modal-btn-primary">Continue</button>
                 </div>
             </div>
 
@@ -247,7 +249,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         pattern="[a-zA-Z0-9_-]+"
                         placeholder="e.g. alex"
                     >
-                    <button type="button" id="login-create-btn" class="submit-pill" style="width:100%;height:44px;">Create & Log In</button>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="login-create-btn" class="modal-btn modal-btn-primary">Create & Log In</button>
                 </div>
             </div>
         </div>
@@ -256,39 +260,39 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
 
     <?php if ($mockMode): ?>
-    <dialog id="mock-exit-dialog" class="prompt-dialog">
-        <div class="prompt-dialog-content">
-            <div class="prompt-dialog-header">
-                <h2 class="prompt-dialog-title">Save mock data?</h2>
-                <button type="button" id="mock-exit-dialog-close" class="login-dialog-close" aria-label="Cancel">
+    <dialog id="mock-exit-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Save mock data?</h2>
+                <button type="button" id="mock-exit-dialog-close" class="modal-close" aria-label="Cancel">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <p class="mock-exit-note">Mock usage counts will be cleared.</p>
-            <div class="prompt-dialog-actions">
-                <button type="button" id="mock-exit-yes" class="prompt-action-btn">Yes</button>
-                <button type="button" id="mock-exit-no" class="prompt-action-btn">No</button>
+            <p class="modal-body">Mock usage counts will be cleared.</p>
+            <div class="modal-actions">
+                <button type="button" id="mock-exit-yes" class="modal-btn">Save Data</button>
+                <button type="button" id="mock-exit-no" class="modal-btn">Delete Data</button>
             </div>
         </div>
     </dialog>
     <?php endif; ?>
 
-    <dialog id="split-dialog" class="split-dialog"></dialog>
+    <dialog id="split-dialog" class="modal modal-lg"></dialog>
 
-    <dialog id="prompt-dialog" class="prompt-dialog">
-        <div class="prompt-dialog-content">
-            <div class="prompt-dialog-header">
-                <h2 class="prompt-dialog-title">Prompt</h2>
-                <button type="button" class="login-dialog-close" id="prompt-dialog-close" aria-label="Close">
+    <dialog id="prompt-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Prompt</h2>
+                <button type="button" class="modal-close" id="prompt-dialog-close" aria-label="Close">
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
             <div id="prompt-dialog-text" class="prompt-dialog-text"></div>
-            <div class="prompt-dialog-actions">
-                <button type="button" id="prompt-copy-btn" class="prompt-action-btn">
+            <div class="modal-actions">
+                <button type="button" id="prompt-copy-btn" class="modal-btn">
                     <span class="material-symbols-outlined">content_copy</span> <span id="prompt-copy-label">Copy</span>
                 </button>
-                <button type="button" id="prompt-reprompt-btn" class="prompt-action-btn prompt-action-primary">
+                <button type="button" id="prompt-reprompt-btn" class="modal-btn modal-btn-primary">
                     <span class="material-symbols-outlined">refresh</span> Use as prompt
                 </button>
             </div>

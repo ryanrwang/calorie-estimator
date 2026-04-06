@@ -1145,54 +1145,7 @@ a:hover {
 }
 
 
-/* ── Advanced split dialog ── */
-.split-dialog {
-    border: none;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-bg-surface);
-    color: var(--color-text-primary);
-    padding: 0;
-    max-width: 560px;
-    width: calc(100% - var(--spacing-lg));
-    box-shadow: var(--shadow-xl);
-    /* Pin to 64px from top, centered horizontally */
-    inset: 64px 0 auto 0;
-    margin: 0 auto;
-    max-height: calc(100vh - 64px - 64px);
-    overflow: hidden;
-}
-
-.split-dialog[open] {
-    display: flex;
-    flex-direction: column;
-}
-
-.split-dialog::backdrop {
-    background-color: var(--color-bg-overlay);
-}
-
-.split-dialog-content {
-    padding: var(--spacing-lg);
-    padding-bottom: var(--spacing-sm);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    flex: 1;
-    min-height: 0;
-}
-
-.split-dialog-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--spacing-lg);
-    flex-shrink: 0;
-}
-
-.split-dialog-title {
-    font-size: var(--typography-lg-fontSize);
-    font-weight: var(--typography-2xl-fontWeight);
-}
+/* ── Advanced split dialog (unique styles) ── */
 
 /* ── Mode toggle ── */
 .split-mode-toggle {
@@ -1437,17 +1390,6 @@ a:hover {
 
 /* ── Responsive: split dialog ── */
 @media (max-width: 480px) {
-    .split-dialog {
-        max-width: 100%;
-        width: calc(100% - var(--spacing-md));
-        inset: 64px 0 auto 0;
-        max-height: calc(100vh - 64px - 64px);
-    }
-
-    .split-dialog-content {
-        padding: var(--spacing-md);
-    }
-
     .split-person-header {
         flex-wrap: wrap;
     }
@@ -2203,22 +2145,152 @@ a:hover {
     color: var(--color-status-warningText);
 }
 
-/* ── Login dialog ── */
-.login-dialog {
+/* ── Shared modal ── */
+.modal {
     border: none;
     border-radius: var(--radius-lg);
     background-color: var(--color-bg-surface);
     color: var(--color-text-primary);
     padding: 0;
     max-width: 400px;
-    width: calc(100% - var(--spacing-lg));
+    width: calc(100% - 32px);
     box-shadow: var(--shadow-xl);
     margin: auto;
+    overflow: hidden;
 }
 
-.login-dialog::backdrop {
+.modal::backdrop {
     background-color: var(--color-bg-overlay);
 }
+
+.modal-lg {
+    max-width: 560px;
+    /* Pin to 64px from top, centered horizontally */
+    inset: 64px 0 auto 0;
+    margin: 0 auto;
+    max-height: calc(100vh - 64px - 64px);
+}
+
+.modal-lg[open] {
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-content {
+    padding: var(--spacing-lg);
+}
+
+.modal-lg > .modal-content {
+    padding-bottom: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-md);
+}
+
+.modal-title {
+    font-size: var(--typography-xl-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+}
+
+.modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.modal-close:hover {
+    background-color: var(--color-interactive-hover);
+    color: var(--color-text-primary);
+}
+
+.modal-body {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--spacing-md);
+}
+
+.modal-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.modal-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    height: 40px;
+    padding: 0 var(--spacing-md);
+    font-size: var(--typography-sm-fontSize);
+    font-family: inherit;
+    font-weight: var(--typography-xl-fontWeight);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.modal-btn:hover {
+    background-color: var(--color-interactive-hover);
+    color: var(--color-text-primary);
+}
+
+.modal-btn .material-symbols-outlined {
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.modal-btn-primary {
+    background-color: var(--color-action-primary);
+    color: var(--color-action-primaryText);
+    border-color: var(--color-action-primary);
+}
+
+.modal-btn-primary:hover {
+    background-color: var(--color-action-primaryHover);
+    color: var(--color-action-primaryText);
+}
+
+@media (max-width: 480px) {
+    .modal-lg {
+        max-width: 100%;
+        width: calc(100% - 32px);
+        inset: 64px 0 auto 0;
+        max-height: calc(100vh - 64px - 64px);
+    }
+
+    .modal-lg > .modal-content {
+        padding: var(--spacing-md);
+    }
+}
+
+/* ── Login dialog ── */
 
 #login-step-passphrase .login-form {
     gap: var(--spacing-md);
@@ -2256,71 +2328,7 @@ a:hover {
     color: var(--color-text-secondary);
 }
 
-.login-dialog-content {
-    padding: var(--spacing-lg);
-}
-
-.login-dialog-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: var(--spacing-md);
-}
-
-.login-dialog-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-full);
-    background: transparent;
-    color: var(--color-text-tertiary);
-    cursor: pointer;
-    transition: background-color var(--transition-fast),
-                color var(--transition-fast);
-}
-
-.login-dialog-close:hover {
-    background-color: var(--color-interactive-hover);
-    color: var(--color-text-primary);
-}
-
-/* ── Prompt dialog ── */
-.prompt-dialog {
-    border: none;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-bg-surface);
-    color: var(--color-text-primary);
-    padding: 0;
-    max-width: 400px;
-    width: calc(100% - var(--spacing-lg));
-    box-shadow: var(--shadow-xl);
-    margin: auto;
-}
-
-.prompt-dialog::backdrop {
-    background-color: var(--color-bg-overlay);
-}
-
-.prompt-dialog-content {
-    padding: var(--spacing-lg);
-}
-
-.prompt-dialog-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: var(--spacing-md);
-}
-
-.prompt-dialog-title {
-    font-size: var(--typography-xl-fontSize);
-    font-weight: var(--typography-xl-fontWeight);
-}
-
+/* ── Prompt dialog (unique styles) ── */
 .prompt-dialog-text {
     font-size: var(--typography-sm-fontSize);
     color: var(--color-text-secondary);
@@ -2332,55 +2340,6 @@ a:hover {
     word-break: break-word;
     max-height: 200px;
     overflow-y: auto;
-}
-
-.prompt-dialog-actions {
-    display: flex;
-    gap: var(--spacing-sm);
-    margin-top: var(--spacing-md);
-}
-
-.prompt-action-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-xs);
-    height: 40px;
-    padding: 0 var(--spacing-md);
-    font-size: var(--typography-sm-fontSize);
-    font-family: inherit;
-    font-weight: var(--typography-xl-fontWeight);
-    border: 1px solid var(--color-border-default);
-    border-radius: var(--radius-md);
-    background-color: var(--color-bg-surface);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: background-color var(--transition-fast),
-                color var(--transition-fast);
-}
-
-.prompt-action-btn:hover {
-    background-color: var(--color-interactive-hover);
-    color: var(--color-text-primary);
-}
-
-.prompt-action-btn .material-symbols-outlined {
-    font-size: 18px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-}
-
-.prompt-action-primary {
-    background-color: var(--color-action-primary);
-    color: var(--color-action-primaryText);
-    border-color: var(--color-action-primary);
-}
-
-.prompt-action-primary:hover {
-    background-color: var(--color-action-primaryHover);
-    color: var(--color-action-primaryText);
 }
 
 /* ── Login page ── */
@@ -2707,10 +2666,3 @@ a:hover {
     100% { transform: rotate(0deg); }
 }
 
-/* ── Mock exit dialog ── */
-
-.mock-exit-note {
-    font-size: var(--typography-sm-fontSize);
-    color: var(--color-text-secondary);
-    margin: 0 0 var(--spacing-md);
-}
