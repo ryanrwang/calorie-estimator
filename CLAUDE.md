@@ -13,7 +13,7 @@ Personal calorie estimation web app with Gemini AI, optimized for LoseIt logging
 - Open `index.php` via a local PHP server (`php -S localhost:8000`) or test on Bluehost after deploy
 - **Windows:** PHP 8.4 is installed via winget at `C:\Users\DarkD\AppData\Local\Microsoft\WinGet\Packages\PHP.PHP.8.4_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe`
 - **Mac:** PHP is installed via Homebrew at `/opt/homebrew/bin/php`
-- `.claude/launch.json` uses `"php"` as the executable — works cross-platform as long as PHP is on PATH
+- `.claude/launch.json` has two configs: `calories-mac` (Homebrew PHP via bash) and `calories-win` (WinGet PHP direct). Use the one matching the current OS with `preview_start`
 - The Gemini API calls require the server to have outbound HTTPS access (Bluehost does)
 
 ## Key Files
@@ -90,6 +90,50 @@ The `.input-card` has two states: expanded (default, for editing) and compact (a
 - **Compact actions are absolutely positioned** (`position: absolute; right; top: 50%; transform: translateY(-50%)`) inside the card. They are NOT flex siblings of the textarea.
 - **Toolbar and photo-preview use `display: none`** in compact. Do NOT try to animate these with opacity/max-height — it causes visible flashing during the transition.
 - **Height animation uses Web Animations API** (FLIP pattern in `compactInput()`/`expandInput()`). The `.animating` class temporarily sets `overflow: hidden` to clip content during the transition.
+
+## Modal Component
+
+All `<dialog>` modals use a shared `.modal` component defined in `styles.css`. Do NOT create one-off dialog styles.
+
+### HTML template
+```html
+<dialog id="my-dialog" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Title</h2>
+            <button type="button" class="modal-close" aria-label="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <!-- Body content here -->
+        <div class="modal-actions">
+            <button type="button" class="modal-btn">Secondary</button>
+            <button type="button" class="modal-btn modal-btn-primary">Primary</button>
+        </div>
+    </div>
+</dialog>
+```
+
+### Available classes
+| Class | Purpose |
+|---|---|
+| `.modal` | Dialog shell — 400px max, 16px mobile margins, `overflow: hidden` |
+| `.modal-lg` | Wider variant (560px), top-pinned, scrollable content area |
+| `.modal-content` | Padding wrapper |
+| `.modal-header` | Title + close button row |
+| `.modal-title` | Heading text |
+| `.modal-close` | 32px icon-only close button |
+| `.modal-body` | Body text (secondary color, small font) |
+| `.modal-actions` | Button row (flex, gap) |
+| `.modal-btn` | Standard button (bordered, secondary) |
+| `.modal-btn-primary` | Primary button (filled, orange) |
+
+### Rules
+- **Every new modal must use these shared classes.** Do not duplicate shell/header/button CSS per modal.
+- `.modal-btn` with `flex: 1` makes buttons equal-width inside `.modal-actions`. A single button fills the row.
+- For complex modals (e.g. split dialog), use `.modal-lg` and keep unique interior styles separate.
+- All modals open via `dialog.showModal()`, close via backdrop click, close button, or Escape.
+- The image overlay (`<div class="image-overlay">`) is NOT a modal — it's a full-screen viewer and stays separate.
 
 ## Environment
 - **Mac:** `gh` CLI is installed via Homebrew at `/opt/homebrew/bin/gh`.
