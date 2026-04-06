@@ -3,7 +3,7 @@
  * GET /api/usage.php — Returns current global usage counts and limits.
  * Used to prefetch usage data on page load so the ring displays immediately.
  */
-session_start();
+require_once __DIR__ . '/../includes/session.php';
 
 $config = require __DIR__ . '/../includes/config.php';
 
