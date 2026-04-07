@@ -1936,9 +1936,14 @@
             easing: ANIM_EASING,
         });
 
-        // ── Phase 2: At collapse end, swap into history and animate ──
+        // ── Phase 2: At collapse end, swap into history in-place ──
         resultsCollapseAnim.onfinish = function () {
             resultsCollapseAnim = null;
+
+            // Render history underneath before hiding results (no visual gap)
+            resultsShowing = false;
+            renderHistory();
+            if (historySection) historySection.classList.remove('hidden');
 
             // Hide results, clean up
             resultsSection.classList.add('hidden');
@@ -1952,16 +1957,10 @@
                 contentEls[c].style.opacity = '';
             }
 
-            // Render history with the new card at the top
-            resultsShowing = false;
-            renderHistory();
-            if (historySection) historySection.classList.remove('hidden');
+            // No shiftHistoryDown — the collapsed hero already represents the
+            // new card, so the history card appears in-place with no gap.
 
-            // Tracked-treads: whole list slides down one slot, new card fades in
-            shiftHistoryDown();
-
-            // Wait for shift animation to finish before showing loading
-            setTimeout(callback, Math.round(MORPH_DURATION * 0.7));
+            setTimeout(callback, 50);
         };
     }
 
