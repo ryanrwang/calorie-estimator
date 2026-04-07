@@ -46,9 +46,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     <span class="material-symbols-outlined">history</span> History
                 </a>
                 <?php endif; ?>
+                <!-- Hidden for now — uncomment to restore
                 <button type="button" class="settings-menu-item settings-menu-danger" id="settings-clear-history">
                     <span class="material-symbols-outlined">delete_sweep</span> Clear history
                 </button>
+                -->
                 <?php if ($loggedIn): ?>
                 <a href="index.php?action=logout" class="settings-menu-item settings-menu-danger">
                     <span class="material-symbols-outlined">logout</span> Log out
