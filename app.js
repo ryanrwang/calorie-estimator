@@ -138,7 +138,8 @@
         }
         settingsDebugToggle.addEventListener('click', function (e) {
             e.stopPropagation();
-            window.location.href = window.APP_MOCK ? 'index.php?mock=0' : 'index.php?mock=1';
+            var mockPage = window.location.pathname.indexOf('history.php') !== -1 ? 'history.php' : 'index.php';
+            window.location.href = window.APP_MOCK ? mockPage + '?mock=0' : mockPage + '?mock=1';
         });
     }
 
@@ -2820,6 +2821,190 @@
             loginCreateBtn.disabled = false;
             loginCreateBtn.textContent = 'Create & Log In';
         });
+    }
+
+    // ── History page rendering ──
+
+    if (window.HISTORY_PAGE_MEALS) {
+        var historyPageList = document.getElementById('history-page-list');
+        var historyPageMeals = window.HISTORY_PAGE_MEALS;
+        var historyPageArchiveFilter = window.HISTORY_PAGE_ARCHIVE_FILTER || 'active';
+        var isArchiveView = historyPageArchiveFilter === 'archived';
+
+        var MODEL_LABELS = {
+            'flash': 'Flash',
+            'flash-thinking': 'Thinking',
+            'pro': 'Pro',
+            'sonnet': 'Sonnet',
+            'opus': 'Opus'
+        };
+        var MODEL_PROVIDERS = {
+            'flash': 'gemini',
+            'flash-thinking': 'gemini',
+            'pro': 'gemini',
+            'sonnet': 'claude',
+            'opus': 'claude'
+        };
+
+        function buildHistoryPageEntry(meal) {
+            var date = new Date(meal.created_at);
+            var dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            var timeStr = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+            var modelLabel = MODEL_LABELS[meal.model_used] || meal.model_used;
+            var provider = MODEL_PROVIDERS[meal.model_used] || 'gemini';
+
+            var h = '';
+            h += '<div class="history-page-entry" data-meal-id="' + meal.id + '">';
+
+            // Thumbnail + response content
+            if (meal.thumbnail) {
+                h += '<div class="history-page-entry-header">';
+                h += '<div class="history-detail-thumb-wrap" data-tooltip="View image">';
+                h += '<img class="history-detail-thumb" src="' + meal.thumbnail + '" alt="Meal photo">';
+                h += '</div>';
+                h += '<div class="history-response">';
+                h += formatResponse(meal.gemini_response);
+                h += '</div>';
+                h += '</div>';
+            } else {
+                h += '<div class="history-response">';
+                h += formatResponse(meal.gemini_response);
+                h += '</div>';
+            }
+
+            // Beard toolbar
+            h += '<div class="history-entry-beard">';
+            h += '<div class="history-beard-left">';
+            h += '<span class="history-date">' + escapeHtml(dateStr + ' ' + timeStr) + '</span>';
+            h += '<span class="model-badge model-badge-' + provider + '">' + escapeHtml(modelLabel) + '</span>';
+            if (meal.archived_at) {
+                h += '<span class="history-archived-badge"><span class="material-symbols-outlined">archive</span> Archived</span>';
+            }
+            h += '</div>';
+            h += '<div class="history-beard-actions">';
+            if (meal.input_text) {
+                h += '<button type="button" class="history-beard-btn hp-prompt-btn" data-meal-id="' + meal.id + '" aria-label="Show prompt" data-tooltip="Prompt">';
+                h += '<span class="material-symbols-outlined">description</span></button>';
+            }
+            if (meal.archived_at) {
+                h += '<button type="button" class="history-beard-btn hp-unarchive-btn" data-meal-id="' + meal.id + '" aria-label="Unarchive" data-tooltip="Unarchive">';
+                h += '<span class="material-symbols-outlined">unarchive</span></button>';
+            } else {
+                h += '<button type="button" class="history-beard-btn hp-archive-btn" data-meal-id="' + meal.id + '" aria-label="Archive" data-tooltip="Archive">';
+                h += '<span class="material-symbols-outlined">archive</span></button>';
+            }
+            h += '<button type="button" class="history-beard-btn hp-delete-btn" data-meal-id="' + meal.id + '" aria-label="Delete" data-tooltip="Delete">';
+            h += '<span class="material-symbols-outlined">delete</span></button>';
+            h += '</div>';
+            h += '</div>';
+
+            h += '</div>';
+            return h;
+        }
+
+        function renderHistoryPage() {
+            if (!historyPageList) return;
+            var html = '';
+            for (var i = 0; i < historyPageMeals.length; i++) {
+                html += buildHistoryPageEntry(historyPageMeals[i]);
+            }
+            historyPageList.innerHTML = html;
+            bindHistoryPageEvents();
+        }
+
+        function getMealById(id) {
+            for (var i = 0; i < historyPageMeals.length; i++) {
+                if (historyPageMeals[i].id === id) return historyPageMeals[i];
+            }
+            return null;
+        }
+
+        function historyPageAction(action, mealId, entryEl) {
+            var csrf = window.APP_CSRF || '';
+            fetch('api/history.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action, meal_id: mealId, csrf_token: csrf })
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data.ok) {
+                    // Animate out then remove
+                    entryEl.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+                    entryEl.style.opacity = '0';
+                    entryEl.style.transform = 'translateY(-8px)';
+                    setTimeout(function () {
+                        entryEl.remove();
+                        // Update count
+                        var countEl = document.querySelector('.history-count');
+                        if (countEl) {
+                            var remaining = historyPageList.querySelectorAll('.history-page-entry').length;
+                            countEl.textContent = remaining + (remaining === 1 ? ' entry' : ' entries');
+                        }
+                        if (historyPageList.children.length === 0) {
+                            historyPageList.innerHTML = '<p class="history-empty">' + (isArchiveView ? 'No archived entries.' : 'No saved estimates yet.') + '</p>';
+                        }
+                    }, 200);
+                }
+            })
+            .catch(function () { /* silently fail */ });
+        }
+
+        function bindHistoryPageEvents() {
+            if (!historyPageList) return;
+
+            // Prompt buttons
+            historyPageList.addEventListener('click', function (e) {
+                var promptBtn = e.target.closest('.hp-prompt-btn');
+                if (promptBtn) {
+                    e.stopPropagation();
+                    var mealId = parseInt(promptBtn.getAttribute('data-meal-id'), 10);
+                    var meal = getMealById(mealId);
+                    if (meal && meal.input_text) {
+                        openPromptDialog(meal.input_text);
+                    }
+                    return;
+                }
+
+                var archiveBtn = e.target.closest('.hp-archive-btn');
+                if (archiveBtn) {
+                    e.stopPropagation();
+                    var id = parseInt(archiveBtn.getAttribute('data-meal-id'), 10);
+                    var entry = archiveBtn.closest('.history-page-entry');
+                    historyPageAction('archive', id, entry);
+                    return;
+                }
+
+                var unarchiveBtn = e.target.closest('.hp-unarchive-btn');
+                if (unarchiveBtn) {
+                    e.stopPropagation();
+                    var uid = parseInt(unarchiveBtn.getAttribute('data-meal-id'), 10);
+                    var uEntry = unarchiveBtn.closest('.history-page-entry');
+                    historyPageAction('unarchive', uid, uEntry);
+                    return;
+                }
+
+                var deleteBtn = e.target.closest('.hp-delete-btn');
+                if (deleteBtn) {
+                    e.stopPropagation();
+                    if (!confirm('Delete this entry?')) return;
+                    var did = parseInt(deleteBtn.getAttribute('data-meal-id'), 10);
+                    var dEntry = deleteBtn.closest('.history-page-entry');
+                    historyPageAction('delete', did, dEntry);
+                    return;
+                }
+
+                // Thumbnail click — show overlay
+                var thumbWrap = e.target.closest('.history-detail-thumb-wrap');
+                if (thumbWrap) {
+                    e.stopPropagation();
+                    var img = thumbWrap.querySelector('img');
+                    if (img) showImageOverlay(img.src);
+                }
+            });
+        }
+
+        renderHistoryPage();
     }
 
 })();
