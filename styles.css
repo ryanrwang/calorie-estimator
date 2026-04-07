@@ -1898,6 +1898,13 @@ a:hover {
 }
 
 
+.history-beard-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-width: 0;
+}
+
 .history-beard-actions {
     display: flex;
     align-items: center;
@@ -2454,7 +2461,8 @@ a:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
 }
 
 .history-page-title-row {
@@ -2570,6 +2578,49 @@ a:hover {
     margin-bottom: 0;
 }
 
+/* ── History page entry hero row (total calories) ── */
+.history-page-hero-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border-default);
+}
+
+.history-page-hero-label {
+    font-size: var(--typography-xs-fontSize);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: var(--typography-xl-fontWeight);
+}
+
+.history-page-hero-range {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.history-page-hero-number {
+    font-size: var(--typography-lg-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.history-page-hero-tilde {
+    font-size: var(--typography-sm-fontSize);
+    color: var(--color-text-tertiary);
+}
+
+.history-page-entry .calorie-hero-original {
+    font-size: var(--typography-xs-fontSize);
+    color: var(--color-text-tertiary);
+    margin-bottom: var(--spacing-sm);
+}
+
 .history-page-entry .history-entry-beard {
     display: flex;
     align-items: center;
@@ -2585,9 +2636,6 @@ a:hover {
 }
 
 .history-page-entry .history-beard-left {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
     flex-wrap: wrap;
 }
 

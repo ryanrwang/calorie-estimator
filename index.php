@@ -179,7 +179,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             </div>
             <div id="results-content" class="results-content"></div>
             <div id="results-beard" class="results-beard hidden">
-                <span id="results-beard-date" class="history-date"></span>
+                <div class="history-beard-left">
+                    <span id="results-beard-date" class="history-date"></span>
+                    <span id="results-beard-model" class="model-badge" style="display:none"></span>
+                </div>
                 <div class="history-beard-actions">
                     <button type="button" class="history-beard-btn" id="results-show-prompt-btn" aria-label="Show prompt" data-tooltip="Prompt">
                         <span class="material-symbols-outlined">description</span>

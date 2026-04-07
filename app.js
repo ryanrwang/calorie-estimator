@@ -1,6 +1,22 @@
 (function () {
     'use strict';
 
+    // ── Model display maps ──
+    var MODEL_LABELS = {
+        'flash': 'Flash',
+        'flash-thinking': 'Thinking',
+        'pro': 'Pro',
+        'sonnet': 'Sonnet',
+        'opus': 'Opus'
+    };
+    var MODEL_PROVIDERS = {
+        'flash': 'gemini',
+        'flash-thinking': 'gemini',
+        'pro': 'gemini',
+        'sonnet': 'claude',
+        'opus': 'claude'
+    };
+
     // ── Page entrance ──
     // Wait for icon font to load, then reveal icons and animate entrance
     // targets in sequence using Web Animations API. After each animation
@@ -8,12 +24,35 @@
     // conflict with the wildcard theme transition rule.
 
     var revealed = false;
+    // On the history page, skip entrance animation when applying filters
+    // (only animate on the first visit per session)
+    var isHistoryPage = !!window.HISTORY_PAGE_MEALS;
+    var skipEntrance = false;
+    if (isHistoryPage) {
+        try {
+            if (sessionStorage.getItem('history-entrance-shown')) {
+                skipEntrance = true;
+            }
+            sessionStorage.setItem('history-entrance-shown', '1');
+        } catch (e) { /* private browsing */ }
+    } else {
+        // Clear the flag when navigating away from history page
+        try { sessionStorage.removeItem('history-entrance-shown'); } catch (e) {}
+    }
+
     function revealPage() {
         if (revealed) return;
         revealed = true;
         document.documentElement.classList.add('fonts-ready');
 
         var els = document.querySelectorAll('.entrance');
+        if (skipEntrance) {
+            // Instantly show without animation
+            for (var j = 0; j < els.length; j++) {
+                els[j].classList.remove('entrance');
+            }
+            return;
+        }
         for (var i = 0; i < els.length; i++) {
             (function (el, delay) {
                 var anim = el.animate([
@@ -667,6 +706,14 @@
                     var dStr = now.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
                     var tStr = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
                     if (resultsBeardDate) resultsBeardDate.textContent = dStr + ' ' + tStr;
+                    var resultsModelBadge = document.getElementById('results-beard-model');
+                    if (resultsModelBadge && data.model) {
+                        var rModelLabel = MODEL_LABELS[data.model] || data.model;
+                        var rProvider = MODEL_PROVIDERS[data.model] || 'gemini';
+                        resultsModelBadge.textContent = rModelLabel;
+                        resultsModelBadge.className = 'model-badge model-badge-' + rProvider;
+                        resultsModelBadge.style.display = '';
+                    }
                     resultsBeard.classList.remove('hidden');
                     // Show prompt button only if there's text
                     if (resultsPromptBtn) {
@@ -2250,7 +2297,14 @@
 
         // Beard toolbar
         h += '<div class="history-entry-beard">';
+        h += '<div class="history-beard-left">';
         h += '<span class="history-date">' + escapeHtml(dateStr + ' ' + timeStr) + '</span>';
+        if (entry.model_used) {
+            var entryModelLabel = MODEL_LABELS[entry.model_used] || entry.model_used;
+            var entryProvider = MODEL_PROVIDERS[entry.model_used] || 'gemini';
+            h += '<span class="model-badge model-badge-' + entryProvider + '">' + escapeHtml(entryModelLabel) + '</span>';
+        }
+        h += '</div>';
         h += '<div class="history-beard-actions">';
         if (entry.input_text) {
             h += '<button type="button" class="history-beard-btn history-show-prompt-btn" data-entry-index="' + i + '" aria-label="Show prompt" data-tooltip="Prompt">';
@@ -2831,21 +2885,6 @@
         var historyPageArchiveFilter = window.HISTORY_PAGE_ARCHIVE_FILTER || 'active';
         var isArchiveView = historyPageArchiveFilter === 'archived';
 
-        var MODEL_LABELS = {
-            'flash': 'Flash',
-            'flash-thinking': 'Thinking',
-            'pro': 'Pro',
-            'sonnet': 'Sonnet',
-            'opus': 'Opus'
-        };
-        var MODEL_PROVIDERS = {
-            'flash': 'gemini',
-            'flash-thinking': 'gemini',
-            'pro': 'gemini',
-            'sonnet': 'claude',
-            'opus': 'claude'
-        };
-
         function buildHistoryPageEntry(meal) {
             var date = new Date(meal.created_at);
             var dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -2853,8 +2892,39 @@
             var modelLabel = MODEL_LABELS[meal.model_used] || meal.model_used;
             var provider = MODEL_PROVIDERS[meal.model_used] || 'gemini';
 
+            var entryRange = parseTotalRange(meal.gemini_response);
+            var splitState = meal.split_data || null;
+            var entryItems = parseItemRanges(meal.gemini_response);
+            var displayRange = entryRange ? computeDisplayRange(entryRange, splitState, entryItems) : null;
+            var heroLabel = computeSplitLabel(splitState);
+
             var h = '';
             h += '<div class="history-page-entry" data-meal-id="' + meal.id + '">';
+
+            // Calorie total hero row
+            if (displayRange) {
+                h += '<div class="history-page-hero-row">';
+                h += '<span class="history-page-hero-label">' + heroLabel + '</span>';
+                if (splitState && splitState.active) {
+                    var badgeCount = splitState.count || (splitState.people ? splitState.people.length : 2);
+                    h += '<span class="history-entry-split-badge" data-tooltip="Split by ' + badgeCount + '">' +
+                        '<span class="material-symbols-outlined">safety_divider</span>' +
+                        '<span class="split-badge-count">' + badgeCount + '</span></span>';
+                }
+                h += '<span class="history-page-hero-range">';
+                if (displayRange.low === displayRange.high) {
+                    h += '<span class="history-page-hero-number">' + displayRange.low + '</span>';
+                } else {
+                    h += '<span class="history-page-hero-number">' + displayRange.low + '</span>';
+                    h += '<span class="history-page-hero-tilde">~</span>';
+                    h += '<span class="history-page-hero-number">' + displayRange.high + '</span>';
+                }
+                h += '</span>';
+                h += '</div>';
+            }
+
+            // Split original total (if split is active)
+            if (entryRange) h += buildSplitOriginalHtml(entryRange, splitState, entryItems);
 
             // Thumbnail + response content
             if (meal.thumbnail) {
