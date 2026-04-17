@@ -215,8 +215,10 @@ a:hover {
     z-index: 200;
 }
 
-[data-tooltip]:hover::after {
-    opacity: 1;
+@media (hover: hover) {
+    [data-tooltip]:hover::after {
+        opacity: 1;
+    }
 }
 
 [data-tooltip].tooltip-visible::after {
