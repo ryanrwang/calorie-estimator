@@ -1059,11 +1059,22 @@
         calorieHero.innerHTML = html;
         calorieHero.classList.remove('hidden');
 
-        // Collapse button
+        // Collapse button — same behavior as tapping the compact input to edit
         var resultsCollapseBtn = calorieHero.querySelector('.results-collapse-btn');
         if (resultsCollapseBtn) {
             resultsCollapseBtn.addEventListener('click', function () {
-                morphResultToHistory(function () { expandHistory(); });
+                isCompactClickable = false;
+                expandInput();
+                lastResultText = '';
+                quickMorphToHistory();
+                if (loadingState) loadingState.classList.add('hidden');
+                if (foodInput) {
+                    setTimeout(function () {
+                        foodInput.focus();
+                        foodInput.style.height = 'auto';
+                        foodInput.style.height = Math.max(80, foodInput.scrollHeight) + 'px';
+                    }, 100);
+                }
             });
         }
 
