@@ -243,11 +243,9 @@
 
     var usageRingWrap = document.getElementById('usage-ring-wrap');
     var usageRingFill = document.getElementById('usage-ring-fill');
-    var usageRingTooltip = document.getElementById('usage-ring-tooltip');
     var usageRingCount = document.getElementById('usage-ring-count');
     var compactUsageRing = document.getElementById('compact-usage-ring');
     var compactRingFill = document.querySelector('.compact-ring-fill');
-    var compactUsageTooltip = document.getElementById('compact-usage-tooltip');
     var compactRingCount = document.querySelector('.compact-ring-count');
     var RING_CIRCUMFERENCE = 2 * Math.PI * 13; // r=13 → ~81.68
 
@@ -259,16 +257,16 @@
             allRingFills[r].style.strokeDashoffset = RING_CIRCUMFERENCE;
         }
     }
-    if (usageRingTooltip) usageRingTooltip.textContent = 'Loading\u2026';
-    if (compactUsageTooltip) compactUsageTooltip.textContent = 'Loading\u2026';
 
     // Cached usage/limits from server (per-model)
     var cachedUsage = null;
     var cachedLimits = null;
 
-    function applyRingState(wrap, fill, tooltip, countEl, count, limit, label, fraction) {
-        if (tooltip) tooltip.textContent = label;
-        // Show number inside ring: uses so far
+    function applyRingState(wrap, fill, countEl, count, limit, label, fraction) {
+        if (wrap) {
+            wrap.setAttribute('data-tooltip', label);
+            if (window.Tooltip) window.Tooltip.refresh(wrap);
+        }
         if (countEl) {
             countEl.textContent = count;
         }
@@ -299,9 +297,8 @@
         var label = limit > 0 ? count + '/' + limit + ' shared usage' : count + ' shared usage';
         var fraction = limit > 0 ? Math.min(count / limit, 1) : 0;
 
-        // Update both rings identically — CSS handles visibility per state
-        if (usageRingWrap) applyRingState(usageRingWrap, usageRingFill, usageRingTooltip, usageRingCount, count, limit, label, fraction);
-        if (compactUsageRing) applyRingState(compactUsageRing, compactRingFill, compactUsageTooltip, compactRingCount, count, limit, label, fraction);
+        if (usageRingWrap) applyRingState(usageRingWrap, usageRingFill, usageRingCount, count, limit, label, fraction);
+        if (compactUsageRing) applyRingState(compactUsageRing, compactRingFill, compactRingCount, count, limit, label, fraction);
     }
 
     // Fetch usage from server and update ring

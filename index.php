@@ -29,7 +29,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     <!-- Floating controls -->
     <div class="floating-controls entrance">
         <div class="settings-dropdown" id="settings-dropdown">
-            <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings" data-tooltip="Settings">
+            <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings" data-tooltip="Settings" data-tooltip-placement="left">
                 <span class="material-symbols-outlined">settings</span>
             </button>
             <div class="settings-menu hidden" id="settings-menu">
@@ -96,13 +96,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                 <div class="compact-text-overlay" id="compact-text-overlay"></div>
                 <div class="compact-actions" id="compact-actions">
-                    <div id="compact-usage-ring" class="usage-ring-wrap">
+                    <div id="compact-usage-ring" class="usage-ring-wrap" data-tooltip="Loading…" data-tooltip-touch>
                         <svg class="usage-ring" viewBox="0 0 32 32" width="32" height="32">
                             <circle class="usage-ring-track" cx="16" cy="16" r="13" />
                             <circle class="usage-ring-fill compact-ring-fill" cx="16" cy="16" r="13" />
                         </svg>
                         <span class="usage-ring-count compact-ring-count"></span>
-                        <span class="usage-ring-tooltip" id="compact-usage-tooltip"></span>
                     </div>
                     <button type="button" class="compact-clear-btn" aria-label="Restart" data-tooltip="Restart">
                         <span class="material-symbols-outlined">restart_alt</span>
@@ -153,13 +152,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                     <div class="toolbar-spacer"></div>
 
-                    <div id="usage-ring-wrap" class="usage-ring-wrap">
+                    <div id="usage-ring-wrap" class="usage-ring-wrap" data-tooltip="Loading…" data-tooltip-touch>
                         <svg class="usage-ring" viewBox="0 0 32 32" width="32" height="32">
                             <circle class="usage-ring-track" cx="16" cy="16" r="13" />
                             <circle id="usage-ring-fill" class="usage-ring-fill" cx="16" cy="16" r="13" />
                         </svg>
                         <span id="usage-ring-count" class="usage-ring-count"></span>
-                        <span id="usage-ring-tooltip" class="usage-ring-tooltip"></span>
                     </div>
 
                     <button type="submit" id="submit-btn" class="submit-pill">
@@ -308,6 +306,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     <script>window.APP_CSRF = <?php echo json_encode($csrfToken); ?>;</script>
     <script>window.APP_MOCK = <?php echo json_encode($mockMode); ?>;</script>
     <script src="tokens.js"></script>
+    <script src="tooltips.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -117,7 +117,7 @@ function filterUrl($overrides = []) {
     <!-- Floating controls -->
     <div class="floating-controls entrance">
         <div class="settings-dropdown" id="settings-dropdown">
-            <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings" data-tooltip="Settings">
+            <button class="fab-btn" type="button" id="settings-btn" aria-label="Settings" data-tooltip="Settings" data-tooltip-placement="left">
                 <span class="material-symbols-outlined">settings</span>
             </button>
             <div class="settings-menu hidden" id="settings-menu">
@@ -220,6 +220,7 @@ function filterUrl($overrides = []) {
     <script>window.HISTORY_PAGE_MEALS = <?php echo json_encode($mealsJson); ?>;</script>
     <script>window.HISTORY_PAGE_ARCHIVE_FILTER = <?php echo json_encode($archiveFilter); ?>;</script>
     <script src="tokens.js"></script>
+    <script src="tooltips.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
