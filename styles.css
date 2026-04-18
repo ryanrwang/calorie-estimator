@@ -191,47 +191,32 @@ a:hover {
 }
 
 /* ── Tooltip system ── */
-[data-tooltip] {
-    position: relative;
-}
-
-[data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
+/* Single body-level element managed by tooltips.js. Positioning and
+   visibility are set inline by the helper; styles below cover appearance
+   and the enter/exit transition only. */
+.tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    max-width: 240px;
     font-size: var(--typography-xs-fontSize);
     font-weight: var(--typography-base-fontWeight);
-    line-height: 1;
-    color: var(--color-action-primaryText);
-    background-color: var(--color-text-primary);
+    line-height: var(--typography-xs-lineHeight);
+    color: var(--color-tooltip-text);
+    background-color: var(--color-tooltip-bg);
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
     pointer-events: none;
     opacity: 0;
     transition: opacity var(--transition-fast);
-    z-index: 200;
+    z-index: 1000;
+    word-wrap: break-word;
+    white-space: normal;
 }
 
-@media (hover: hover) {
-    [data-tooltip]:hover::after {
-        opacity: 1;
-    }
-}
-
-[data-tooltip].tooltip-visible::after {
+.tooltip.tooltip-visible {
     opacity: 1;
-}
-
-/* Settings FAB tooltip appears to the left */
-.floating-controls [data-tooltip]::after {
-    bottom: auto;
-    left: auto;
-    right: calc(100% + 8px);
-    top: 50%;
-    transform: translateY(-50%);
 }
 
 /* ── Main ── */
@@ -718,26 +703,6 @@ a:hover {
     stroke: var(--color-status-warningText);
 }
 
-.usage-ring-tooltip {
-    position: absolute;
-    bottom: calc(100% + var(--spacing-sm));
-    left: 50%;
-    transform: translateX(-50%);
-    white-space: nowrap;
-    font-size: var(--typography-xs-fontSize);
-    color: var(--color-action-primaryText);
-    background-color: var(--color-text-primary);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--radius-sm);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-}
-
-.usage-ring-wrap:hover .usage-ring-tooltip {
-    opacity: 1;
-}
-
 /* ── Loading state (inside results container) ── */
 .loading-state {
     display: flex;
@@ -915,16 +880,6 @@ a:hover {
     font-weight: var(--typography-xl-fontWeight);
 }
 
-/* Tooltip appears below split button to avoid hero overflow clip */
-.split-btn[data-tooltip]::after {
-    bottom: auto;
-    top: calc(100% + 4px);
-}
-
-/* Ensure hero doesn't clip the tooltip */
-.calorie-hero {
-    overflow: visible;
-}
 
 
 /* ── Split dialog stepper ── */
@@ -1884,11 +1839,6 @@ a:hover {
     border-top-color: var(--color-border-default);
 }
 
-/* Allow tooltips to escape beard overflow */
-.history-entry.expanded .history-entry-beard {
-    overflow: visible;
-}
-
 /* Slightly smaller buttons so they breathe within the beard */
 .history-entry-beard .history-beard-btn {
     width: 28px;
@@ -2038,21 +1988,11 @@ a:hover {
     font-size: 20px;
 }
 
-.results-collapse-btn[data-tooltip]::after {
-    bottom: auto;
-    top: calc(100% + 4px);
-}
-
 /* ── Detail thumbnail ── */
 .history-detail-thumb-wrap {
     display: inline-block;
     margin-bottom: var(--spacing-sm);
     cursor: pointer;
-}
-
-.history-detail-thumb-wrap[data-tooltip]::after {
-    bottom: auto;
-    top: calc(100% + 4px);
 }
 
 .history-detail-thumb {

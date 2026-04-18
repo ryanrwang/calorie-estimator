@@ -243,6 +243,10 @@
                     infoBg:      primitives.color.blue[50],
                     infoText:    primitives.color.blue[700],
                 },
+                tooltip: {
+                    bg:   primitives.color.gray[900],
+                    text: primitives.color.white,
+                },
             },
         },
 
@@ -301,6 +305,10 @@
                     info:        primitives.color.blue[500],
                     infoBg:      primitives.color.blue[900],
                     infoText:    primitives.color.blue[400],
+                },
+                tooltip: {
+                    bg:   primitives.color.gray[100],
+                    text: primitives.color.gray[900],
                 },
             },
         },

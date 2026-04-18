@@ -199,6 +199,7 @@ if ($step === 'username' && (!$mockMode || mock_has_db())) {
     <?php endif; ?>
 
     <script src="tokens.js"></script>
+    <script src="tooltips.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
