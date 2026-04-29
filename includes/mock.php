@@ -41,21 +41,23 @@ function mock_has_db() {
  */
 function mock_generate_response($inputText, $modelId) {
     $foodPool = [
-        ['name' => 'Grilled chicken breast', 'low' => 165, 'high' => 220],
-        ['name' => 'Brown rice (1 cup)', 'low' => 215, 'high' => 250],
-        ['name' => 'Caesar salad', 'low' => 300, 'high' => 450],
-        ['name' => 'Banana', 'low' => 90, 'high' => 120],
-        ['name' => 'Scrambled eggs (2)', 'low' => 180, 'high' => 240],
-        ['name' => 'Slice of pepperoni pizza', 'low' => 280, 'high' => 350],
-        ['name' => 'Greek yogurt (6oz)', 'low' => 100, 'high' => 150],
-        ['name' => 'Turkey sandwich', 'low' => 350, 'high' => 480],
-        ['name' => 'Latte (12oz)', 'low' => 150, 'high' => 200],
-        ['name' => 'French fries (medium)', 'low' => 320, 'high' => 420],
-        ['name' => 'Salmon fillet (6oz)', 'low' => 280, 'high' => 360],
-        ['name' => 'Avocado toast', 'low' => 250, 'high' => 350],
-        ['name' => 'Chocolate chip cookie', 'low' => 180, 'high' => 250],
-        ['name' => 'Bowl of oatmeal', 'low' => 150, 'high' => 220],
-        ['name' => 'Burrito bowl', 'low' => 550, 'high' => 750],
+        ['name' => 'Grilled chicken breast', 'low' => 165, 'high' => 220, 'alts' => ['Chicken breast grilled']],
+        ['name' => 'Brown rice (1 cup)', 'low' => 215, 'high' => 250, 'alts' => ['Brown rice cooked']],
+        ['name' => 'Caesar salad', 'low' => 300, 'high' => 450, 'alts' => []],
+        ['name' => 'Banana', 'low' => 90, 'high' => 120, 'alts' => []],
+        ['name' => 'Scrambled eggs (2)', 'low' => 180, 'high' => 240, 'alts' => ['Eggs scrambled']],
+        ['name' => 'Slice of pepperoni pizza', 'low' => 280, 'high' => 350, 'alts' => ['Pepperoni pizza slice']],
+        ['name' => 'Greek yogurt (6oz)', 'low' => 100, 'high' => 150, 'alts' => ['Greek yogurt plain']],
+        ['name' => 'Turkey sandwich', 'low' => 350, 'high' => 480, 'alts' => []],
+        ['name' => 'Latte (12oz)', 'low' => 150, 'high' => 200, 'alts' => ['Caffe latte']],
+        ['name' => 'French fries (medium)', 'low' => 320, 'high' => 420, 'alts' => ['Fries fast food']],
+        ['name' => 'Salmon fillet (6oz)', 'low' => 280, 'high' => 360, 'alts' => ['Salmon grilled']],
+        ['name' => 'Avocado toast', 'low' => 250, 'high' => 350, 'alts' => []],
+        ['name' => 'Chocolate chip cookie', 'low' => 180, 'high' => 250, 'alts' => []],
+        ['name' => 'Bowl of oatmeal', 'low' => 150, 'high' => 220, 'alts' => ['Oatmeal cooked']],
+        ['name' => 'Burrito bowl', 'low' => 550, 'high' => 750, 'alts' => ['Chipotle burrito bowl']],
+        ['name' => 'Goong Aob Woon Sen (1 plate)', 'low' => 600, 'high' => 800, 'alts' => ['Goong Ob Woonsen', 'Shrimp and glass noodles']],
+        ['name' => 'Pad See Ew (1 plate)', 'low' => 700, 'high' => 950, 'alts' => ['Pad See-Ew', 'Stir-fried wide rice noodles']],
     ];
 
     $sources = [
@@ -101,6 +103,20 @@ function mock_generate_response($inputText, $modelId) {
     $note = $notes[array_rand($notes)];
     if ($note !== '') {
         $lines[] = $note;
+    }
+
+    $lines[] = '';
+    $lines[] = 'Names:';
+    foreach ($items as $item) {
+        // Strip "(portion)" from the original to match the prompt rule
+        $bare = trim(preg_replace('/\s*\([^)]*\)\s*$/', '', $item['name']));
+        $parts = [$bare !== '' ? $bare : $item['name']];
+        if (!empty($item['alts'])) {
+            foreach ($item['alts'] as $alt) {
+                $parts[] = $alt;
+            }
+        }
+        $lines[] = implode(' | ', $parts);
     }
 
     return implode("\n", $lines);

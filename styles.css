@@ -2291,6 +2291,89 @@ a:hover {
     overflow-y: auto;
 }
 
+/* ── Clipboard dialog (unique styles) ── */
+#clipboard-dialog .modal-header {
+    margin-bottom: var(--spacing-sm);
+}
+
+.clipboard-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--spacing-sm);
+    overflow-y: auto;
+}
+
+.clipboard-item {
+    padding: var(--spacing-md) 0;
+    border-top: 1px solid var(--color-border-default);
+}
+
+.clipboard-item:first-child {
+    border-top: none;
+    padding-top: var(--spacing-sm);
+}
+
+.clipboard-name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    width: 100%;
+    padding: var(--spacing-sm);
+    font-family: inherit;
+    font-size: var(--typography-sm-fontSize);
+    text-align: left;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color var(--transition-fast),
+                color var(--transition-fast);
+}
+
+.clipboard-name-row-original {
+    font-size: var(--typography-base-fontSize);
+    font-weight: var(--typography-xl-fontWeight);
+    color: var(--color-text-primary);
+}
+
+.clipboard-name-row:hover {
+    background-color: var(--color-interactive-hover);
+    color: var(--color-text-primary);
+}
+
+.clipboard-name-row:hover .clipboard-name-icon {
+    color: var(--color-text-secondary);
+}
+
+.clipboard-name-text {
+    flex: 1;
+    min-width: 0;
+    word-break: break-word;
+}
+
+.clipboard-name-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    color: var(--color-text-tertiary);
+    transition: color var(--transition-fast);
+}
+
+.clipboard-name-row.copied {
+    color: var(--color-action-primary);
+}
+
+.clipboard-name-row.copied .clipboard-name-icon {
+    color: var(--color-action-primary);
+}
+
+.clipboard-empty {
+    margin: var(--spacing-sm) 0;
+    color: var(--color-text-tertiary);
+    font-size: var(--typography-sm-fontSize);
+}
+
 /* ── Login page ── */
 .login-card {
     max-width: 400px;

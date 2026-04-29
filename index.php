@@ -182,6 +182,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     <span id="results-beard-model" class="model-badge" style="display:none"></span>
                 </div>
                 <div class="history-beard-actions">
+                    <button type="button" class="history-beard-btn" id="results-clipboard-btn" aria-label="Copy item names" data-tooltip="Copy names">
+                        <span class="material-symbols-outlined">content_paste</span>
+                    </button>
                     <button type="button" class="history-beard-btn" id="results-show-prompt-btn" aria-label="Show prompt" data-tooltip="Prompt">
                         <span class="material-symbols-outlined">description</span>
                     </button>
@@ -299,6 +302,19 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     <span class="material-symbols-outlined">refresh</span> Use as prompt
                 </button>
             </div>
+        </div>
+    </dialog>
+
+    <dialog id="clipboard-dialog" class="modal modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Item names</h2>
+                <button type="button" class="modal-close" id="clipboard-dialog-close" aria-label="Close">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <p class="modal-body">Tap to copy alternative names.</p>
+            <div id="clipboard-dialog-list" class="clipboard-list"></div>
         </div>
     </dialog>
 

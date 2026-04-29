@@ -210,6 +210,19 @@ function filterUrl($overrides = []) {
         </div>
     </dialog>
 
+    <dialog id="clipboard-dialog" class="modal modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Item names</h2>
+                <button type="button" class="modal-close" id="clipboard-dialog-close" aria-label="Close">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <p class="modal-body">Tap to copy alternative names.</p>
+            <div id="clipboard-dialog-list" class="clipboard-list"></div>
+        </div>
+    </dialog>
+
     <?php if ($mockMode): ?>
     <div class="mock-indicator">MOCK MODE</div>
     <?php endif; ?>

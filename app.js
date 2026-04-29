@@ -397,6 +397,7 @@
     var resultsBeardDate = document.getElementById('results-beard-date');
     var resultsPromptBtn = document.getElementById('results-show-prompt-btn');
     var resultsArchiveBtn = document.getElementById('results-archive-btn');
+    var resultsClipboardBtn = document.getElementById('results-clipboard-btn');
     var currentResultPrompt = '';
     var currentTotalRange = null;   // Original total range from AI
     var currentItemRanges = [];     // Parsed [{name, low, high}, ...]
@@ -915,6 +916,73 @@
         });
     }
 
+    // ── Clipboard dialog (copy item names) ──
+
+    var clipboardDialog = document.getElementById('clipboard-dialog');
+    var clipboardDialogClose = document.getElementById('clipboard-dialog-close');
+    var clipboardDialogList = document.getElementById('clipboard-dialog-list');
+
+    function renderClipboardRows(rows) {
+        if (!clipboardDialogList) return;
+        if (!rows || rows.length === 0) {
+            clipboardDialogList.innerHTML = '<p class="clipboard-empty">No items found in this estimate.</p>';
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            html += '<div class="clipboard-item">';
+            for (var j = 0; j < row.names.length; j++) {
+                var nm = row.names[j];
+                var rowCls = j === 0 ? 'clipboard-name-row clipboard-name-row-original' : 'clipboard-name-row';
+                html += '<button type="button" class="' + rowCls + '" data-name="' + escapeHtml(nm) + '">';
+                html += '<span class="clipboard-name-text">' + escapeHtml(nm) + '</span>';
+                html += '<span class="clipboard-name-icon material-symbols-outlined">content_copy</span>';
+                html += '</button>';
+            }
+            html += '</div>';
+        }
+        clipboardDialogList.innerHTML = html;
+    }
+
+    function openClipboardDialog(text) {
+        if (!clipboardDialog) return;
+        var rows = buildClipboardData(text || '');
+        renderClipboardRows(rows);
+        clipboardDialog.showModal();
+    }
+
+    if (clipboardDialogClose && clipboardDialog) {
+        clipboardDialogClose.addEventListener('click', function () {
+            clipboardDialog.close();
+        });
+    }
+
+    if (clipboardDialog) {
+        clipboardDialog.addEventListener('click', function (e) {
+            if (e.target === clipboardDialog) clipboardDialog.close();
+        });
+    }
+
+    if (clipboardDialogList) {
+        clipboardDialogList.addEventListener('click', function (e) {
+            var rowEl = e.target.closest('.clipboard-name-row');
+            if (!rowEl) return;
+            var name = rowEl.getAttribute('data-name');
+            if (!name) return;
+            navigator.clipboard.writeText(name).then(function () {
+                var icon = rowEl.querySelector('.clipboard-name-icon');
+                if (!icon) return;
+                rowEl.classList.add('copied');
+                icon.textContent = 'check';
+                setTimeout(function () {
+                    rowEl.classList.remove('copied');
+                    icon.textContent = 'content_copy';
+                }, 1500);
+            });
+        });
+    }
+
     // ── Results beard actions ──
 
     if (resultsPromptBtn) {
@@ -922,6 +990,12 @@
             if (currentResultPrompt) {
                 openPromptDialog(currentResultPrompt);
             }
+        });
+    }
+
+    if (resultsClipboardBtn) {
+        resultsClipboardBtn.addEventListener('click', function () {
+            if (lastResultText) openClipboardDialog(lastResultText);
         });
     }
 
@@ -1206,6 +1280,7 @@
             var line = lines[i].trim();
             if (!line) continue;
             var lowerLine = line.toLowerCase();
+            if (lowerLine.indexOf('names:') === 0) break;
             if (/^total/i.test(lowerLine)) continue;
             if (lowerLine.indexOf('source') === 0 || lowerLine.indexOf('note') === 0 ||
                 lowerLine.indexOf('*') === 0 || lowerLine.indexOf('disclaimer') === 0) continue;
@@ -1216,6 +1291,51 @@
             }
         }
         return items;
+    }
+
+    function parseNamesBlock(text) {
+        if (!text) return [];
+        var lines = text.split('\n');
+        var startIdx = -1;
+        for (var i = 0; i < lines.length; i++) {
+            if (/^names:\s*$/i.test(lines[i].trim())) { startIdx = i + 1; break; }
+        }
+        if (startIdx < 0) return [];
+        var rows = [];
+        for (var j = startIdx; j < lines.length; j++) {
+            var line = lines[j].trim();
+            if (!line) continue;
+            var lower = line.toLowerCase();
+            if (lower.indexOf('source') === 0 || lower.indexOf('note') === 0 ||
+                lower.indexOf('disclaimer') === 0 || lower.indexOf('split:') === 0 ||
+                lower.indexOf('total') === 0) break;
+            var parts = line.split('|').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; });
+            if (parts.length === 0) continue;
+            var original = parts[0];
+            var alts = parts.slice(1, 4);
+            rows.push({ original: original, alts: alts });
+        }
+        return rows;
+    }
+
+    function buildClipboardData(text) {
+        var items = parseItemRanges(text);
+        var nameRows = parseNamesBlock(text);
+        var rows = [];
+        for (var i = 0; i < items.length; i++) {
+            var titleFull = items[i].name; // includes (portion) if present
+            var row = nameRows[i];
+            var names;
+            if (row) {
+                names = [row.original].concat(row.alts);
+            } else {
+                // Fallback for older entries: strip trailing parenthetical portion
+                var bare = titleFull.replace(/\s*\([^)]*\)\s*$/, '').trim();
+                names = [bare || titleFull];
+            }
+            rows.push({ title: titleFull, names: names });
+        }
+        return rows;
     }
 
     // ── Advanced split dialog ──
@@ -2082,6 +2202,9 @@
 
             var lowerLine = line.toLowerCase();
 
+            // Stop rendering once we hit the Names: clipboard block
+            if (lowerLine.indexOf('names:') === 0) break;
+
             // Skip total line (hero already shows it)
             if (/^total/i.test(lowerLine)) continue;
 
@@ -2210,6 +2333,7 @@
             var line = lines[i].trim();
             if (!line) continue;
             var lowerLine = line.toLowerCase();
+            if (lowerLine.indexOf('names:') === 0) break;
             if (/^total/i.test(lowerLine)) continue;
             if (lowerLine.indexOf('source') === 0 || lowerLine.indexOf('note') === 0 ||
                 lowerLine.indexOf('*') === 0 || lowerLine.indexOf('disclaimer') === 0) continue;
@@ -2341,6 +2465,8 @@
         }
         h += '</div>';
         h += '<div class="history-beard-actions">';
+        h += '<button type="button" class="history-beard-btn history-clipboard-btn" data-entry-index="' + i + '" aria-label="Copy item names" data-tooltip="Copy names">';
+        h += '<span class="material-symbols-outlined">content_paste</span></button>';
         if (entry.input_text) {
             h += '<button type="button" class="history-beard-btn history-show-prompt-btn" data-entry-index="' + i + '" aria-label="Show prompt" data-tooltip="Prompt">';
             h += '<span class="material-symbols-outlined">description</span></button>';
@@ -2397,6 +2523,18 @@
                 var history = getHistory();
                 if (history[idx] && history[idx].input_text) {
                     openPromptDialog(history[idx].input_text);
+                }
+            });
+        }
+
+        var clipBtn = entryEl.querySelector('.history-clipboard-btn');
+        if (clipBtn) {
+            clipBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var idx = parseInt(this.getAttribute('data-entry-index'), 10);
+                var history = getHistory();
+                if (history[idx] && history[idx].gemini_response) {
+                    openClipboardDialog(history[idx].gemini_response);
                 }
             });
         }
@@ -2987,6 +3125,8 @@
             }
             h += '</div>';
             h += '<div class="history-beard-actions">';
+            h += '<button type="button" class="history-beard-btn hp-clipboard-btn" data-meal-id="' + meal.id + '" aria-label="Copy item names" data-tooltip="Copy names">';
+            h += '<span class="material-symbols-outlined">content_paste</span></button>';
             if (meal.input_text) {
                 h += '<button type="button" class="history-beard-btn hp-prompt-btn" data-meal-id="' + meal.id + '" aria-label="Show prompt" data-tooltip="Prompt">';
                 h += '<span class="material-symbols-outlined">description</span></button>';
@@ -3067,6 +3207,17 @@
                     var meal = getMealById(mealId);
                     if (meal && meal.input_text) {
                         openPromptDialog(meal.input_text);
+                    }
+                    return;
+                }
+
+                var clipBtn = e.target.closest('.hp-clipboard-btn');
+                if (clipBtn) {
+                    e.stopPropagation();
+                    var clipMealId = parseInt(clipBtn.getAttribute('data-meal-id'), 10);
+                    var clipMeal = getMealById(clipMealId);
+                    if (clipMeal && clipMeal.gemini_response) {
+                        openClipboardDialog(clipMeal.gemini_response);
                     }
                     return;
                 }
