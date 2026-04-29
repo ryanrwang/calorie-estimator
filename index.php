@@ -128,7 +128,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     </label>
 
                     <?php if ($loggedIn): ?>
-                    <div class="model-select" id="model-select">
+                    <div class="model-select" id="model-select" data-username="<?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?>">
                         <button type="button" class="toolbar-btn model-select-trigger" id="model-select-trigger" data-tooltip="Model">
                             <span class="material-symbols-outlined">chef_hat</span>
                             <span class="model-select-label" id="model-select-label">Flash</span>

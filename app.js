@@ -117,9 +117,31 @@
     // ── Model dropdown ──
 
     var selectedModel = 'flash';
+    var modelSelect = document.getElementById('model-select');
     var modelSelectTrigger = document.getElementById('model-select-trigger');
     var modelDropdown = document.getElementById('model-dropdown');
     var modelSelectLabel = document.getElementById('model-select-label');
+
+    // Per-user persistence: key is scoped by username so multiple accounts
+    // on the same device keep separate preferences. Only set when logged in.
+    var modelStorageKey = null;
+    if (modelSelect) {
+        var u = modelSelect.getAttribute('data-username') || '';
+        if (u) modelStorageKey = 'calorie-estimator-model:' + u;
+    }
+
+    function applyModelSelection(optionEl) {
+        var modelOptions = modelDropdown.querySelectorAll('.model-option');
+        for (var j = 0; j < modelOptions.length; j++) {
+            modelOptions[j].classList.remove('active');
+        }
+        optionEl.classList.add('active');
+        selectedModel = optionEl.getAttribute('data-model');
+
+        // Update label — use the text content minus the note
+        var labelText = optionEl.childNodes[0].textContent.trim();
+        if (modelSelectLabel) modelSelectLabel.textContent = labelText;
+    }
 
     if (modelSelectTrigger && modelDropdown) {
         modelSelectTrigger.addEventListener('click', function (e) {
@@ -130,21 +152,26 @@
         var modelOptions = modelDropdown.querySelectorAll('.model-option');
         for (var i = 0; i < modelOptions.length; i++) {
             modelOptions[i].addEventListener('click', function () {
-                for (var j = 0; j < modelOptions.length; j++) {
-                    modelOptions[j].classList.remove('active');
-                }
-                this.classList.add('active');
-                selectedModel = this.getAttribute('data-model');
-
-                // Update label — use the text content minus the note
-                var labelText = this.childNodes[0].textContent.trim();
-                if (modelSelectLabel) modelSelectLabel.textContent = labelText;
-
+                applyModelSelection(this);
                 modelDropdown.classList.add('hidden');
+
+                if (modelStorageKey) {
+                    try { localStorage.setItem(modelStorageKey, selectedModel); } catch (e) { /* noop */ }
+                }
 
                 // Refresh usage ring for the newly selected model
                 updateUsageDisplay();
             });
+        }
+
+        // Restore previously selected model for this user
+        if (modelStorageKey) {
+            var stored = null;
+            try { stored = localStorage.getItem(modelStorageKey); } catch (e) { /* noop */ }
+            if (stored) {
+                var match = modelDropdown.querySelector('.model-option[data-model="' + stored + '"]');
+                if (match) applyModelSelection(match);
+            }
         }
     }
 
