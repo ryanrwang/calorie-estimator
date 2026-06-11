@@ -35,9 +35,16 @@ $action = isset($input['action']) ? $input['action'] : '';
 if ($action === 'passphrase') {
     $mockMode = is_mock_mode();
     $passphrase = isset($input['passphrase']) ? trim($input['passphrase']) : '';
-    if ($mockMode || verify_passphrase($passphrase)) {
+    // Passphrase is always required — mock mode must never bypass auth.
+    if (verify_passphrase($passphrase)) {
         $_SESSION['passphrase_verified'] = true;
-        $users = ($mockMode && !mock_has_db()) ? [] : get_all_usernames();
+        try {
+            $users = ($mockMode && !mock_has_db()) ? [] : get_all_usernames();
+        } catch (Exception $e) {
+            error_log('Login API (user list) DB error: ' . $e->getMessage());
+            echo json_encode(['ok' => false, 'error' => 'Login is temporarily unavailable. Please try again later.']);
+            exit;
+        }
         // Regenerate CSRF token
         $_SESSION['csrf_token'] = '';
         $newToken = csrf_generate();
@@ -54,7 +61,13 @@ if ($action === 'select_user') {
         exit;
     }
     $userId = isset($input['user_id']) ? (int)$input['user_id'] : 0;
-    $user = get_user_by_id($userId);
+    try {
+        $user = get_user_by_id($userId);
+    } catch (Exception $e) {
+        error_log('Login API (select_user) DB error: ' . $e->getMessage());
+        echo json_encode(['ok' => false, 'error' => 'Login is temporarily unavailable. Please try again later.']);
+        exit;
+    }
     if ($user) {
         login_user($user['id'], $user['username']);
         unset($_SESSION['passphrase_verified']);
