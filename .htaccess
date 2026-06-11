@@ -9,3 +9,15 @@ php_value max_execution_time 60
     RewriteRule ^includes/ - [F,L]
     RewriteRule ^data/ - [F,L]
 </IfModule>
+
+# Block web access to log files (error_log can be written into any directory
+# by PHP, and may contain server paths, DB user, and stack traces)
+<FilesMatch "(^error_log$|\.log$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>

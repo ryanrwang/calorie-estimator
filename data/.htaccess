@@ -1,1 +1,9 @@
-Deny from all
+# Block all direct web access to this directory.
+# (The root .htaccess also blocks /data/ via mod_rewrite; this is defense in depth.)
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
