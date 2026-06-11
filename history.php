@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/session.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/mock.php';
+require_once __DIR__ . '/includes/assets.php';
 $mockMode = is_mock_mode();
 
 if (!is_logged_in()) {
@@ -111,7 +112,7 @@ function filterUrl($overrides = []) {
     <title>History &mdash; Carole</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="<?php echo asset_url('styles.css'); ?>">
 </head>
 <body>
     <!-- Floating controls -->
@@ -232,8 +233,8 @@ function filterUrl($overrides = []) {
     <script>window.APP_MOCK = <?php echo json_encode($mockMode); ?>;</script>
     <script>window.HISTORY_PAGE_MEALS = <?php echo json_encode($mealsJson); ?>;</script>
     <script>window.HISTORY_PAGE_ARCHIVE_FILTER = <?php echo json_encode($archiveFilter); ?>;</script>
-    <script src="tokens.js"></script>
-    <script src="tooltips.js"></script>
-    <script src="app.js"></script>
+    <script src="<?php echo asset_url('tokens.js'); ?>"></script>
+    <script src="<?php echo asset_url('tooltips.js'); ?>"></script>
+    <script src="<?php echo asset_url('app.js'); ?>"></script>
 </body>
 </html>
