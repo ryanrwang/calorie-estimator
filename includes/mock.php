@@ -7,14 +7,19 @@
 /**
  * Check and apply ?mock=1 / ?mock=0 URL override, then return whether mock mode is active.
  */
-function is_mock_mode() {
+/**
+ * Whether mock mode may be enabled on this deployment at all. Off by default
+ * everywhere; owners opt in per-environment via 'allow_mock' (or force mock on
+ * via 'mock_mode'). Gates both is_mock_mode() and whether the UI toggle is shown.
+ */
+function mock_allowed() {
     $config = require __DIR__ . '/config.php';
+    return !empty($config['allow_mock']) || !empty($config['mock_mode']);
+}
 
-    // Mock mode must be explicitly enabled for this deployment. Off by default
-    // so a stray ?mock= can never enable it (or bypass anything) in production.
-    // Owners opt in per-environment via 'allow_mock' (or force-on via 'mock_mode').
-    $allowed = !empty($config['allow_mock']) || !empty($config['mock_mode']);
-    if (!$allowed) {
+function is_mock_mode() {
+    // Off by default so a stray ?mock= can never enable it (or bypass anything).
+    if (!mock_allowed()) {
         return false;
     }
 
@@ -28,7 +33,8 @@ function is_mock_mode() {
         return (bool)$_SESSION['mock_mode'];
     }
 
-    // Fall back to config flag
+    // Fall back to config flag (force-on deployments)
+    $config = require __DIR__ . '/config.php';
     return !empty($config['mock_mode']);
 }
 
