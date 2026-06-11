@@ -8,6 +8,12 @@
  * - Custom save path to avoid shared-hosting GC interference
  */
 
+// Never surface PHP errors/stack traces to the browser (they can leak the DSN,
+// DB user, and server paths). Log them instead. Applies to every entry point
+// since they all include this file first.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 if (session_status() === PHP_SESSION_ACTIVE) {
     return;
 }

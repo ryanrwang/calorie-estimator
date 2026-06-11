@@ -23,32 +23,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = isset($_POST['action']) ? $_POST['action'] : '';
 
         if ($action === 'passphrase') {
-            if ($mockMode) {
-                // Mock mode: skip passphrase verification
+            // Passphrase is always required — mock mode must never bypass auth.
+            $input = isset($_POST['passphrase']) ? trim($_POST['passphrase']) : '';
+            if (verify_passphrase($input)) {
                 $_SESSION['passphrase_verified'] = true;
                 $step = 'username';
             } else {
-                $input = isset($_POST['passphrase']) ? trim($_POST['passphrase']) : '';
-                if (verify_passphrase($input)) {
-                    $_SESSION['passphrase_verified'] = true;
-                    $step = 'username';
-                } else {
-                    $error = 'Incorrect passphrase.';
-                }
+                $error = 'Incorrect passphrase.';
             }
         } elseif ($action === 'select_user') {
             if (empty($_SESSION['passphrase_verified'])) {
                 $error = 'Please enter the passphrase first.';
             } else {
                 $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
-                $user = get_user_by_id($userId);
-                if ($user) {
-                    login_user($user['id'], $user['username']);
-                    unset($_SESSION['passphrase_verified']);
-                    header('Location: index.php');
-                    exit;
-                } else {
-                    $error = 'User not found.';
+                try {
+                    $user = get_user_by_id($userId);
+                    if ($user) {
+                        login_user($user['id'], $user['username']);
+                        unset($_SESSION['passphrase_verified']);
+                        header('Location: index.php');
+                        exit;
+                    } else {
+                        $error = 'User not found.';
+                        $step = 'username';
+                    }
+                } catch (Exception $e) {
+                    error_log('Login (select_user) DB error: ' . $e->getMessage());
+                    $error = 'Login is temporarily unavailable. Please try again later.';
                     $step = 'username';
                 }
             }
@@ -104,7 +105,15 @@ if (!empty($_SESSION['passphrase_verified']) && $step === 'passphrase') {
 }
 
 if ($step === 'username' && (!$mockMode || mock_has_db())) {
-    $users = get_all_usernames();
+    try {
+        $users = get_all_usernames();
+    } catch (Exception $e) {
+        error_log('Login (user list) DB error: ' . $e->getMessage());
+        $users = [];
+        if ($error === '') {
+            $error = 'Login is temporarily unavailable. You can still use the estimator without an account.';
+        }
+    }
 } else {
     $users = [];
 }
@@ -149,7 +158,7 @@ if ($step === 'username' && (!$mockMode || mock_has_db())) {
                         id="passphrase"
                         name="passphrase"
                         class="login-input"
-                        <?php echo $mockMode ? '' : 'required'; ?>
+                        required
                         autofocus
                         autocomplete="off"
                     >
