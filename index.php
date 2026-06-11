@@ -37,9 +37,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 <button type="button" class="settings-menu-item" id="settings-theme-toggle">
                     <span class="material-symbols-outlined theme-icon">light_mode</span> <span id="settings-theme-label">Use dark mode</span>
                 </button>
+                <?php if (mock_allowed()): ?>
                 <button type="button" class="settings-menu-item" id="settings-debug-toggle">
                     <span class="material-symbols-outlined">bug_report</span> <span id="settings-mock-label"><?php echo $mockMode ? 'Disable mock mode' : 'Enable mock mode'; ?></span>
                 </button>
+                <?php endif; ?>
                 <div class="settings-menu-divider"></div>
                 <?php if ($loggedIn): ?>
                 <span class="settings-menu-username"><?php echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8'); ?></span>
