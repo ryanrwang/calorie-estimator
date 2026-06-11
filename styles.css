@@ -1029,7 +1029,7 @@ a:hover {
 }
 
 .split-reset-btn:hover {
-    background-color: var(--color-bg-tertiary);
+    background-color: var(--color-interactive-hover);
 }
 
 .split-reset-btn:disabled {
@@ -2540,7 +2540,7 @@ a:hover {
 .history-filter-group {
     display: flex;
     gap: 2px;
-    background-color: var(--color-bg-sunken);
+    background-color: var(--color-bg-muted);
     border-radius: var(--radius-md);
     padding: 2px;
 }
@@ -2681,7 +2681,7 @@ a:hover {
     text-transform: uppercase;
     letter-spacing: 0.03em;
     line-height: var(--typography-base-lineHeight);
-    background-color: var(--color-bg-sunken);
+    background-color: var(--color-bg-muted);
     color: var(--color-text-tertiary);
 }
 
