@@ -3,6 +3,7 @@ require_once __DIR__ . '/includes/session.php';
 require_once __DIR__ . '/includes/csrf.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/mock.php';
+require_once __DIR__ . '/includes/assets.php';
 $mockMode = is_mock_mode();
 
 // Already logged in? Go home
@@ -125,7 +126,7 @@ if ($step === 'username' && (!$mockMode || mock_has_db())) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Log In &mdash; Carole</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="<?php echo asset_url('styles.css'); ?>">
 </head>
 <body>
     <!-- Floating controls -->
@@ -207,8 +208,8 @@ if ($step === 'username' && (!$mockMode || mock_has_db())) {
     <div class="mock-indicator">MOCK MODE</div>
     <?php endif; ?>
 
-    <script src="tokens.js"></script>
-    <script src="tooltips.js"></script>
-    <script src="app.js"></script>
+    <script src="<?php echo asset_url('tokens.js'); ?>"></script>
+    <script src="<?php echo asset_url('tooltips.js'); ?>"></script>
+    <script src="<?php echo asset_url('app.js'); ?>"></script>
 </body>
 </html>
