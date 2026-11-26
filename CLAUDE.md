@@ -168,9 +168,5 @@ Personal calorie estimation web app. Text or photo → AI estimate for LoseIt lo
 
 ## Open issues
 
-- **No forced HTTPS redirect (from the portfolio audit, 14 Oct 2026). Bring this up at the start of the next session on this app.**
-  - **Problem:** this app's `.htaccess` turns on `RewriteEngine`, and in Apache that replaces the site root's rewrite rules instead of adding to them. So the root's redirect (plain http and non-www to `https://www.`) never runs here.
-  - **Live check (14 Oct):** `http://www.ryanrwang.com/apps/calories/` and `https://ryanrwang.com/apps/calories/` both load with 200 instead of a 301, and the same happens on clearful.net. Every other page on the site redirects.
-  - **Risk:** HSTS (1 year, sent site-wide) protects visitors after their first HTTPS page, so the gap is a first visit over plain http, which includes the passphrase login and API calls.
-  - **Fix:** add `RewriteOptions Inherit` on the line after `RewriteEngine On`, as `motoinsight/.htaccess` does in the portfolio repo. Inherited rules run after this file's own, so the `[F,L]` blocks on `includes/` and `data/` still win.
-  - **Check after deploy:** both URLs above should return `301` to `https://www.<same host>/apps/calories/`. Login, history, photo upload and the API should still work over HTTPS.
+- None.
+- **Keep `RewriteOptions Inherit` in `.htaccess`.** This folder turns on `RewriteEngine`, which in Apache replaces the site root's rewrite rules. Without that line, plain http and non-www requests load with 200 instead of redirecting to `https://www.` (found in the Oct 2026 portfolio audit, fixed and checked live on 26 Nov 2026).
