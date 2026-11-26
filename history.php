@@ -32,10 +32,16 @@ if ($archiveFilter === 'archived') {
     $where .= ' AND (archived_at IS NULL)';
 }
 
-$validModels = ['flash', 'flash-thinking', 'pro', 'sonnet', 'opus'];
-if ($modelFilter !== 'all' && in_array($modelFilter, $validModels)) {
-    $where .= ' AND model_used = ?';
-    $params[] = $modelFilter;
+// Filter by provider, so meals from retired models (Thinking, Pro, Opus)
+// still show up under Gemini or Claude
+$providerModels = [
+    'gemini' => ['flash', 'flash-thinking', 'pro'],
+    'claude' => ['sonnet', 'opus'],
+];
+if ($modelFilter !== 'all' && isset($providerModels[$modelFilter])) {
+    $keys = $providerModels[$modelFilter];
+    $where .= ' AND model_used IN (' . implode(',', array_fill(0, count($keys), '?')) . ')';
+    $params = array_merge($params, $keys);
 }
 
 try {
@@ -71,22 +77,6 @@ foreach ($meals as $meal) {
         'split_data' => $meal['split_data'] ? json_decode($meal['split_data'], true) : null,
     ];
 }
-
-// Model display config
-$modelLabels = [
-    'flash' => 'Flash',
-    'flash-thinking' => 'Thinking',
-    'pro' => 'Pro',
-    'sonnet' => 'Sonnet',
-    'opus' => 'Opus',
-];
-$modelProviders = [
-    'flash' => 'gemini',
-    'flash-thinking' => 'gemini',
-    'pro' => 'gemini',
-    'sonnet' => 'claude',
-    'opus' => 'claude',
-];
 
 // Build filter URL helper
 function filterUrl($overrides = []) {
@@ -165,8 +155,7 @@ function filterUrl($overrides = []) {
             <div class="history-filter-group">
                 <a href="<?php echo filterUrl(['model' => 'all', 'page' => 1]); ?>"
                    class="history-filter-chip<?php echo $modelFilter === 'all' ? ' active' : ''; ?>">All</a>
-                <?php foreach ($modelLabels as $key => $label): ?>
-                    <?php $provider = $modelProviders[$key]; ?>
+                <?php foreach (['gemini' => 'Gemini', 'claude' => 'Claude'] as $key => $label): ?>
                     <a href="<?php echo filterUrl(['model' => $key, 'page' => 1]); ?>"
                        class="history-filter-chip<?php echo $modelFilter === $key ? ' active' : ''; ?>"><?php echo $label; ?></a>
                 <?php endforeach; ?>

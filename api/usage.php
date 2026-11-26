@@ -10,11 +10,19 @@ $config = require __DIR__ . '/../includes/config.php';
 header('Content-Type: application/json');
 
 $usageFile = __DIR__ . '/../data/api_usage.json';
-$ALL_MODELS = ['flash', 'flash-thinking', 'pro', 'sonnet', 'opus'];
+$ALL_MODELS = ['flash', 'sonnet'];
+
+// Only report limits for current models, so stale config keys are ignored
+$defaults = ['flash' => 150, 'sonnet' => 50];
+$configured = isset($config['usage_limits']) ? $config['usage_limits'] : [];
+$limits = [];
+foreach ($ALL_MODELS as $m) {
+    $limits[$m] = isset($configured[$m]) ? (int)$configured[$m] : $defaults[$m];
+}
 
 $fp = fopen($usageFile, 'c+');
 if (!$fp) {
-    echo json_encode(['usage' => array_fill_keys($ALL_MODELS, 0), 'limits' => $config['usage_limits']]);
+    echo json_encode(['usage' => array_fill_keys($ALL_MODELS, 0), 'limits' => $limits]);
     exit;
 }
 flock($fp, LOCK_SH);
@@ -36,7 +44,5 @@ foreach ($ALL_MODELS as $m) {
 
 echo json_encode([
     'usage' => $usage,
-    'limits' => isset($config['usage_limits']) ? $config['usage_limits'] : [
-        'flash' => 200, 'flash-thinking' => 200, 'pro' => 80, 'sonnet' => 50, 'opus' => 20,
-    ],
+    'limits' => $limits,
 ]);
