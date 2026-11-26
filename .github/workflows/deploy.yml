@@ -9,13 +9,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
+          # Encrypt the login and files in transit (explicit TLS) and check the
+          # server's certificate, instead of plain FTP
+          protocol: ftps
+          security: strict
           local-dir: ./
           server-dir: ./apps/calories/
           exclude: |
