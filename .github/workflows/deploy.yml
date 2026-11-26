@@ -13,7 +13,10 @@ jobs:
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          # The server's own hostname, which matches its *.hostmonster.com TLS
+          # certificate (the domain name does not). Same IP as the site.
+          # If Bluehost moves the account, look up the new name in cPanel.
+          server: host2027.hostmonster.com
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           # Encrypt the login and files in transit (explicit TLS) and check the
