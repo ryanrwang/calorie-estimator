@@ -6,6 +6,9 @@ php_value max_execution_time 60
 # Deny direct access to includes and data directories
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Rewrite rules here replace the root ones, so pull in the site-wide HTTPS
+    # redirect. Inherited rules run after these, so the [F,L] blocks still win.
+    RewriteOptions Inherit
     RewriteRule ^includes/ - [F,L]
     RewriteRule ^data/ - [F,L]
 </IfModule>
