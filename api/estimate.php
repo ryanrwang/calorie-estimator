@@ -60,7 +60,7 @@ Keep responses short and to the point. No lengthy explanations unless the user a
 
 Never use markdown formatting — no bold, no italic, no headers, no numbered lists, no bullet characters, no backticks. Plain text only.
 
-When the user mentions a specific restaurant or menu item, always search the web before responding. Look for the restaurant's official nutrition info, MyFitnessPal entries, Nutritionix, CalorieKing, or similar databases. If official data exists, use it and note the source. If not, estimate based on typical preparation methods for that restaurant or cuisine style.
+When the user mentions a specific restaurant or menu item and you have a web search tool, always search the web before responding. Look for the restaurant's official nutrition info, MyFitnessPal entries, Nutritionix, CalorieKing, or similar databases. If official data exists, use it and note the source. If not, estimate based on typical preparation methods for that restaurant or cuisine style. Without a search tool, use what you already know about that restaurant's published nutrition info, and never say you are unable to search.
 
 For photos, identify each visible item and estimate portion sizes based on visual cues like plate size, utensils, and item proportions relative to each other.
 
@@ -108,7 +108,9 @@ PROMPT;
 // --- API usage counter (per-model tracking) ---
 
 $usageFile = __DIR__ . '/../data/api_usage.json';
-$ALL_MODELS = ['flash', 'flash-thinking', 'pro', 'sonnet', 'opus'];
+// Current lineup: one free model (Gemini) and one paid model (Claude, logged-in only).
+// Older keys (flash-thinking, pro, opus) may still appear in saved history.
+$ALL_MODELS = ['flash', 'sonnet'];
 
 function empty_usage() {
     global $ALL_MODELS;
@@ -185,23 +187,27 @@ function get_usage_for_response() {
 }
 
 function get_usage_limits() {
-    global $config;
-    return isset($config['usage_limits']) ? $config['usage_limits'] : [
-        'flash' => 200, 'flash-thinking' => 200, 'pro' => 80, 'sonnet' => 50, 'opus' => 20,
-    ];
+    global $config, $ALL_MODELS;
+    $defaults = ['flash' => 150, 'sonnet' => 50];
+    $configured = isset($config['usage_limits']) ? $config['usage_limits'] : [];
+    // Only report limits for current models, so stale config keys are ignored
+    $limits = [];
+    foreach ($ALL_MODELS as $m) {
+        $limits[$m] = isset($configured[$m]) ? (int)$configured[$m] : $defaults[$m];
+    }
+    return $limits;
 }
 
 // --- Provider routing ---
 
 // Map model identifiers to providers
 $geminiModels = [
-    'flash'          => 'gemini-2.5-flash',
-    'flash-thinking' => 'gemini-2.5-flash',
-    'pro'            => 'gemini-2.5-pro',
+    // Fastest free model with itemized answers in Nov 2026 testing. Preview model:
+    // Google names gemini-3.6-flash as its successor, which is too slow on the free tier today.
+    'flash' => 'gemini-3-flash-preview',
 ];
 $anthropicModels = [
-    'sonnet' => 'claude-sonnet-4-20250514',
-    'opus'   => 'claude-opus-4-20250514',
+    'sonnet' => 'claude-sonnet-5-5',
 ];
 
 if (isset($geminiModels[$modelId])) {
@@ -258,17 +264,14 @@ if ($hardStop) {
 
     if ($limit > 0 && $count >= $limit) {
         // Suggest alternatives that still have quota
-        $modelNames = [
-            'flash' => 'Flash', 'flash-thinking' => 'Flash Thinking',
-            'pro' => 'Pro', 'sonnet' => 'Sonnet', 'opus' => 'Opus',
-        ];
+        $modelNames = ['flash' => 'Flash', 'sonnet' => 'Sonnet'];
         $suggestions = [];
         foreach ($usageLimits as $altModel => $altLimit) {
             if ($altModel === $modelId) continue;
             $altCount = isset($currentUsage[$altModel]) ? $currentUsage[$altModel] : 0;
             if ($altCount < $altLimit) {
                 // Skip Claude models for logged-out users
-                if (($altModel === 'sonnet' || $altModel === 'opus') && !is_logged_in()) continue;
+                if (isset($anthropicModels[$altModel]) && !is_logged_in()) continue;
                 $suggestions[] = isset($modelNames[$altModel]) ? $modelNames[$altModel] : $altModel;
             }
         }
@@ -292,7 +295,8 @@ if ($provider === 'gemini') {
     }
 
     $geminiModel = $geminiModels[$modelId];
-    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $geminiModel . ':generateContent?key=' . urlencode($apiKey);
+    // API key goes in a header, not the URL, so it never lands in request logs
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $geminiModel . ':generateContent';
 
     // Build contents array
     $parts = [];
@@ -330,22 +334,19 @@ if ($provider === 'gemini') {
         'contents' => [
             ['parts' => $parts],
         ],
-        'tools' => [
-            ['google_search' => new stdClass()],
-        ],
+        // No google_search tool: Search grounding is not on the free tier for any
+        // Gemini 3 model, and sending it returns 429 on every request.
     ];
 
-    // Flash Thinking uses thinkingConfig
-    if ($modelId === 'flash-thinking') {
-        $payload['generationConfig'] = [
-            'thinkingConfig' => ['thinkingBudget' => 1024],
-        ];
-    }
+    // Gemini 3 thinks by default, so no thinkingConfig is needed
 
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'x-goog-api-key: ' . $apiKey,
+        ],
         CURLOPT_POSTFIELDS => json_encode($payload),
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 55,
@@ -443,42 +444,63 @@ if ($provider === 'anthropic') {
         'text' => $textContent,
     ];
 
+    $messages = [
+        [
+            'role' => 'user',
+            'content' => $contentBlocks,
+        ],
+    ];
+
     $payload = [
         'model' => $anthropicModel,
-        'max_tokens' => 1024,
+        // Thinking is on by default on Sonnet 5.5 and counts toward max_tokens,
+        // so leave room for it plus the answer
+        'max_tokens' => 16000,
+        'output_config' => ['effort' => 'medium'],
         'system' => $systemPrompt,
         'tools' => [
             [
-                'type' => 'web_search_20250305',
+                'type' => 'web_search_20260209',
                 'name' => 'web_search',
                 'max_uses' => 3,
             ],
         ],
-        'messages' => [
-            [
-                'role' => 'user',
-                'content' => $contentBlocks,
-            ],
-        ],
+        // Re-run on Anthropic's recommended model if a safety classifier declines
+        'fallbacks' => 'default',
+        'messages' => $messages,
     ];
 
-    $ch = curl_init('https://api.anthropic.com/v1/messages');
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'x-api-key: ' . $apiKey,
-            'anthropic-version: 2023-06-01',
-        ],
-        CURLOPT_POSTFIELDS => json_encode($payload),
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 90,
-    ]);
+    // The web search loop can pause a long turn (stop_reason "pause_turn").
+    // Send the partial reply back so Claude continues, up to a few times.
+    $maxContinuations = 2;
+    for ($attempt = 0; $attempt <= $maxContinuations; $attempt++) {
+        $ch = curl_init('https://api.anthropic.com/v1/messages');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-api-key: ' . $apiKey,
+                'anthropic-version: 2023-06-01',
+                'anthropic-beta: server-side-fallback-2026-07-01',
+            ],
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 90,
+        ]);
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) break;
+
+        $data = json_decode($response, true);
+        $stopReason = isset($data['stop_reason']) ? $data['stop_reason'] : '';
+        if ($httpCode !== 200 || $stopReason !== 'pause_turn' || $attempt === $maxContinuations) break;
+
+        $payload['messages'][] = ['role' => 'assistant', 'content' => $data['content']];
+    }
 
     if ($curlError) {
         $msg = strpos($curlError, 'timed out') !== false || strpos($curlError, 'Timeout') !== false
@@ -487,7 +509,9 @@ if ($provider === 'anthropic') {
         json_response(['error' => $msg, 'usage' => get_usage_for_response(), 'limits' => get_usage_limits(), 'timeout' => true], 504);
     }
 
-    $data = json_decode($response, true);
+    if ($httpCode === 200 && $stopReason === 'refusal') {
+        json_response(['error' => 'Claude declined this request. Try rewording it or use Flash.', 'usage' => get_usage_for_response(), 'limits' => get_usage_limits()], 502);
+    }
 
     if ($httpCode !== 200) {
         $errorMsg = 'Claude API error';

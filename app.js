@@ -2,6 +2,8 @@
     'use strict';
 
     // ── Model display maps ──
+    // Current lineup is flash (free) and sonnet (paid). The other keys are
+    // retired but kept so older saved history still shows the right badge.
     var MODEL_LABELS = {
         'flash': 'Flash',
         'flash-thinking': 'Thinking',
@@ -819,11 +821,7 @@
                 var modelLimit = cachedLimits[selectedModel] || 0;
                 var modelCount = cachedUsage[selectedModel] || 0;
                 if (modelLimit > 0 && modelCount >= modelLimit) {
-                    var modelNames = {
-                        'flash': 'Flash', 'flash-thinking': 'Flash Thinking',
-                        'pro': 'Pro', 'sonnet': 'Sonnet', 'opus': 'Opus'
-                    };
-                    var displayName = modelNames[selectedModel] || selectedModel;
+                    var displayName = MODEL_LABELS[selectedModel] || selectedModel;
                     var errorHtml = '<p class="error-text">Daily limit reached for ' + displayName +
                         ' (' + modelCount + '/' + modelLimit + ') \u2014 resets at midnight PT.</p>' +
                         '<button type="button" class="retry-btn" id="retry-btn">Try Again</button>';

@@ -139,15 +139,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         <div class="model-dropdown hidden" id="model-dropdown">
                             <div class="model-dropdown-group">
                                 <span class="model-dropdown-group-label">Gemini</span>
-                                <button type="button" class="model-option active" data-model="flash">Flash</button>
-                                <button type="button" class="model-option" data-model="flash-thinking">Thinking</button>
-                                <button type="button" class="model-option" data-model="pro">Pro <span class="model-option-note">100/day</span></button>
+                                <button type="button" class="model-option active" data-model="flash">Flash <span class="model-option-note">free</span></button>
                             </div>
                             <div class="model-dropdown-divider"></div>
                             <div class="model-dropdown-group">
                                 <span class="model-dropdown-group-label">Claude</span>
                                 <button type="button" class="model-option" data-model="sonnet">Sonnet <span class="model-option-note">paid</span></button>
-                                <button type="button" class="model-option" data-model="opus">Opus <span class="model-option-note">paid</span></button>
                             </div>
                         </div>
                     </div>
